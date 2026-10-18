@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Contact · Harta Mută</title>
+<meta name="description" content="Cum poți scrie autorului site-ului Harta Mută: sugestii, greșeli în întrebări, ștergerea unui scor.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="pagini.css">
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="./">← Harta Mută</a>
+  <h1>Contact</h1>
+  <div class="doc">
+    <p>Ai o sugestie, ai găsit o întrebare greșită sau vrei să ștergi un scor din clasament? Scrie-mi.</p>
+    <p class="mail" id="mail">Adresa se încarcă…</p>
+    <div class="row">
+      <a class="btn" id="mail-link" href="./" hidden>Scrie un email</a>
+      <button class="btn ghost" id="copy" type="button" hidden>Copiază adresa</button>
+      <span class="status" id="status" role="status"></span>
+    </div>
+    <noscript><p>Adresa de contact se afișează cu JavaScript, ca să nu fie colectată de roboți de spam. Activează JavaScript sau folosește un alt browser.</p></noscript>
+
+    <h2>Ce să scrii</h2>
+    <ul>
+      <li><strong>Întrebare greșită:</strong> numele jocului și întrebarea cu pricina.</li>
+      <li><strong>Ștergerea unui scor:</strong> jocul, numele din clasament și, dacă ții minte, data și scorul.</li>
+      <li><strong>Sugestii:</strong> jocuri noi, țări sau județe care lipsesc, orice îți vine în minte.</li>
+    </ul>
+    <p>Încerc să răspund în câteva zile.</p>
+  </div>
+</div>
+<script>
+(function () {
+  // Adresa e construită din bucăți, ca să fie mai greu de găsit de roboți simpli.
+  var addr = ['busola', '.', 'contact', '@', 'gmail', '.', 'com'].join('');
+  var box = document.getElementById('mail');
+  var link = document.getElementById('mail-link');
+  var copy = document.getElementById('copy');
+  var status = document.getElementById('status');
+  box.textContent = addr;
+  link.href = 'mailto:' + addr + '?subject=' + encodeURIComponent('Harta Mută');
+  link.hidden = false;
+  copy.hidden = false;
+  copy.addEventListener('click', function () {
+    var done = function () { status.textContent = 'Adresa a fost copiată.'; };
+    var fail = function () {
+      var r = document.createRange(); r.selectNodeContents(box);
+      var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+      status.textContent = 'Adresa e selectată. Apasă Ctrl+C.';
+    };
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(addr).then(done, fail);
+      else fail();
+    } catch (e) { fail(); }
+  });
+})();
+</script>
+</body>
+</html>

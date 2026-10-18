@@ -252,6 +252,12 @@
   .opt.wrong { animation: shake 0.35s ease; }
   .opt.right { animation: pop 0.3s ease; }
   @media (prefers-reduced-motion: reduce) { .opt.wrong, .opt.right { animation: none; } }
+
+  /* Subsol și loc pentru reclame (inactiv până se completează ADSENSE în script) */
+  .foot { display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; padding-top: 8px; font: 500 0.85rem var(--f-mono); }
+  .foot a { color: var(--ink-soft); text-underline-offset: 3px; }
+  .ad-slot { width: 100%; min-height: 90px; display: grid; gap: 4px; justify-items: stretch; overflow: hidden; }
+  .ad-label { font: 500 0.7rem var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
 </style>
 </head>
 <body>
@@ -278,7 +284,7 @@
 
   <!-- ECRAN: alegerea jocului -->
   <main id="home" class="wrap" style="gap:22px">
-    <p class="lead">Cinci moduri de joc, <strong>zece întrebări</strong> fiecare. Fără cont, fără reclame. Alege unul și vezi cât de bine știi harta.</p>
+    <p class="lead">Cinci moduri de joc, <strong>zece întrebări</strong> fiecare. Gratuit și fără cont. Alege unul și vezi cât de bine știi harta.</p>
 
     <div class="strip" id="strip" aria-label="Seria și insignele tale"></div>
 
@@ -295,6 +301,7 @@
     <div class="tiles" id="tiles"></div>
     <div><button class="btn ghost" id="show-boards" type="button" hidden>Vezi clasamentele</button></div>
     <p class="note">Suprafețele și populațiile sunt valori aproximative, rotunjite.</p>
+    <div class="ad-slot" id="ad-home" hidden></div>
   </main>
 
   <!-- ECRAN: jocul -->
@@ -358,7 +365,13 @@
       <button class="btn ghost" id="again" type="button">Încă o rundă</button>
       <button class="btn ghost" id="home-btn" type="button">Alte jocuri</button>
     </div>
+    <div class="ad-slot" id="ad-end" hidden></div>
   </section>
+
+  <footer class="foot">
+    <a href="confidentialitate.html">Confidențialitate</a>
+    <a href="contact.html">Contact</a>
+  </footer>
 </div>
 
 <script>
@@ -370,6 +383,9 @@
   var ENABLED = !!(CONFIG.url && CONFIG.key);
   // Statistici de vizite: pune aici Website ID din Umami Cloud (umami.is). Cât timp e gol, nu se încarcă nimic.
   var UMAMI_ID = '30ee3f56-7ea2-4f81-aedb-c54de5eb17a9';
+  // Reclame (Google AdSense). Lasă gol până ai cont aprobat și mesajul de consimțământ activat
+  // (AdSense -> Privacy & messaging). Completează client (ca-pub-...) și id-ul fiecărei unități de reclamă.
+  var ADSENSE = { client: '', slots: { home: '', end: '' } };
   var ROUNDS = 10;
 
   var CONT = { E: 'Europa', A: 'Asia', F: 'Africa', N: 'America de Nord', S: 'America de Sud', O: 'Oceania' };
@@ -561,6 +577,33 @@
   }
   function track(name, data) {
     try { if (window.umami && window.umami.track) window.umami.track(name, data); } catch (e) {}
+  }
+
+  // ---------- reclame (inactive cât timp ADSENSE.client e gol) ----------
+  var adsReady = false, adsShown = {};
+  function loadAds() {
+    if (adsReady || !ADSENSE.client) return;
+    adsReady = true;
+    var sc2 = document.createElement('script');
+    sc2.async = true; sc2.crossOrigin = 'anonymous';
+    sc2.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' + encodeURIComponent(ADSENSE.client);
+    document.head.appendChild(sc2);
+  }
+  // Doar pe pagina de start și pe ecranul de rezultat, niciodată în timpul jocului.
+  function showAd(where) {
+    var slot = ADSENSE.slots[where];
+    var box = $('ad-' + where);
+    if (!ADSENSE.client || !slot || !box || adsShown[where]) return;
+    loadAds();
+    adsShown[where] = true;
+    box.textContent = '';
+    var lab = document.createElement('span'); lab.className = 'ad-label'; lab.textContent = 'Reclamă'; box.appendChild(lab);
+    var ins = document.createElement('ins'); ins.className = 'adsbygoogle'; ins.style.display = 'block';
+    ins.setAttribute('data-ad-client', ADSENSE.client); ins.setAttribute('data-ad-slot', slot);
+    ins.setAttribute('data-ad-format', 'auto'); ins.setAttribute('data-full-width-responsive', 'true');
+    box.appendChild(ins);
+    box.hidden = false;
+    try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch (e) {}
   }
 
   // ---------- sunet ----------
@@ -939,6 +982,7 @@
     renderStrip();
     $('show-boards').hidden = !ENABLED;
     show('home');
+    showAd('home');
   }
 
   function begin(o) {
@@ -1083,6 +1127,7 @@
     track('final', { joc: S.mode === 'daily' ? 'zilnic' : S.mode === 'repeat' ? 'repetare' : S.id, scor: score });
     sfx(score >= total * 0.6 ? 'win' : 'no');
     show('end');
+    showAd('end');
     setupSubmit(canSubmit);
     var focusEl = $('again').hidden ? $('home-btn') : $('again');
     focusEl.focus();
