@@ -1,0 +1,572 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Harta Mută</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;600;700&display=swap">
+<style>
+  html { color-scheme: light; }
+  body { margin: 0; }
+  /* Layout: o foaie de hartă (grilă de paralele și meridiane) cu un singur rând de jocuri deasupra; accentul magenta vine din hărțile nautice. */
+  :root {
+    --sea: #E3EDF0;
+    --paper: #F7FBFB;
+    --ink: #0C2B3D;
+    --ink-soft: #46606F;
+    --rule: #CFDEE3;
+    --rule-strong: #9DB6C0;
+    --accent: #B3125B;
+    --accent-ink: #FFFFFF;
+    --good: #137A4B;
+    --good-bg: #DDF2E7;
+    --bad: #B54708;
+    --bad-bg: #FBE6D3;
+    --f-display: 'Familjen Grotesk', 'Helvetica Neue', Arial, sans-serif;
+    --f-body: 'Source Sans 3', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --f-mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --sea: #0A1B26;
+      --paper: #11293A;
+      --ink: #DCEAF0;
+      --ink-soft: #8FA9B8;
+      --rule: #14303F;
+      --rule-strong: #2E5266;
+      --accent: #F0589A;
+      --accent-ink: #0A1B26;
+      --good: #4CC98B;
+      --good-bg: #12362A;
+      --bad: #F5A25D;
+      --bad-bg: #3B2A18;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --sea: #0A1B26;
+    --paper: #11293A;
+    --ink: #DCEAF0;
+    --ink-soft: #8FA9B8;
+    --rule: #14303F;
+    --rule-strong: #2E5266;
+    --accent: #F0589A;
+    --accent-ink: #0A1B26;
+    --good: #4CC98B;
+    --good-bg: #12362A;
+    --bad: #F5A25D;
+    --bad-bg: #3B2A18;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background-color: var(--sea);
+    background-image:
+      linear-gradient(var(--rule) 1px, transparent 1px),
+      linear-gradient(90deg, var(--rule) 1px, transparent 1px);
+    background-size: 56px 56px;
+    background-position: -1px -1px;
+    color: var(--ink);
+    font: 400 17px/1.5 var(--f-body);
+    padding-block: 28px 48px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    min-height: 100vh;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; display: grid; gap: 28px; }
+  h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; line-height: 1.05; }
+  p { margin: 0; }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+  /* Antet */
+  .brand { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .brand svg { width: 64px; height: 64px; flex: none; color: var(--ink); }
+  .brand h1 { font-size: clamp(2.5rem, 8vw, 4.2rem); font-weight: 700; letter-spacing: -0.02em; }
+  .coords { font: 500 0.8rem var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); margin-top: 6px; }
+  .lead { max-width: 52ch; color: var(--ink-soft); font-size: 1.1rem; }
+  .lead strong { color: var(--ink); font-weight: 600; }
+
+  /* Selector de zonă */
+  .zone { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .zone-label { font: 500 0.78rem var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
+  .seg { display: inline-flex; border: 1.5px solid var(--ink); border-radius: 6px; overflow: hidden; background: var(--paper); }
+  .seg input { position: absolute; opacity: 0; pointer-events: none; }
+  .seg label { padding: 0.45rem 1rem; cursor: pointer; font-weight: 600; }
+  .seg label + input + label, .seg input + label + input + label { border-left: 1.5px solid var(--ink); }
+  .seg input:checked + label { background: var(--ink); color: var(--sea); }
+  .seg input:focus-visible + label { outline: 3px solid var(--accent); outline-offset: -3px; }
+
+  /* Plăcile jocurilor */
+  .tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .tile {
+    display: grid; gap: 10px; align-content: start; text-align: left;
+    background: var(--paper); border: 1.5px solid var(--ink); border-radius: 8px;
+    padding: 20px; cursor: pointer; min-width: 0;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  .tile:hover { transform: translate(-2px, -2px); box-shadow: 4px 4px 0 var(--accent); }
+  .tile h2 { font-size: 1.6rem; font-weight: 700; }
+  .tile p { color: var(--ink-soft); }
+  .tile .sample { font: 500 0.95rem var(--f-mono); color: var(--ink); border-top: 1px dashed var(--rule-strong); padding-top: 10px; }
+  .tile .record { font: 500 0.78rem var(--f-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
+  .note { font: 400 0.85rem var(--f-mono); color: var(--ink-soft); }
+
+  /* Ecran de joc */
+  .play, .end { background: var(--paper); border: 1.5px solid var(--ink); border-radius: 8px; padding: 22px; display: grid; gap: 22px; }
+  .bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .link { background: none; border: 0; padding: 4px 0; cursor: pointer; font-weight: 600; color: var(--ink); text-decoration: underline; text-underline-offset: 4px; }
+  .stats { display: flex; gap: 18px; font: 500 0.85rem var(--f-mono); font-variant-numeric: tabular-nums; color: var(--ink-soft); }
+  .stats b { color: var(--ink); font-weight: 500; }
+  .ticks { display: flex; gap: 5px; }
+  .tick { flex: 1; height: 6px; border-radius: 2px; background: var(--rule-strong); }
+  .tick.good { background: var(--good); }
+  .tick.bad { background: var(--bad); }
+  .tick.now { background: var(--ink); }
+  .q { display: grid; gap: 6px; }
+  .kicker { font: 500 0.78rem var(--f-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); }
+  .prompt { font-family: var(--f-display); font-weight: 700; font-size: clamp(2rem, 6.5vw, 3.2rem); line-height: 1.05; letter-spacing: -0.015em; overflow-wrap: anywhere; }
+  .ask { color: var(--ink-soft); font-size: 1.1rem; }
+  .opts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .opts.six { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .opt {
+    display: flex; align-items: center; gap: 12px; text-align: left; min-height: 3.4rem;
+    padding: 0.8rem 1rem; border: 1.5px solid var(--ink); border-radius: 6px;
+    background: var(--paper); font-weight: 600; font-size: 1.05rem; cursor: pointer; min-width: 0;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  .opt .txt { display: grid; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+  .opt .detail { font: 500 0.85rem var(--f-mono); color: var(--ink-soft); }
+  .opt kbd { font: 500 0.75rem var(--f-mono); color: var(--ink-soft); border: 1px solid var(--rule-strong); border-radius: 3px; padding: 0.1rem 0.4rem; flex: none; }
+  .opt:hover:not(:disabled) { transform: translate(-2px, -2px); box-shadow: 3px 3px 0 var(--accent); }
+  .opt:disabled { cursor: default; }
+  .opt.right { background: var(--good-bg); border-color: var(--good); }
+  .opt.wrong { background: var(--bad-bg); border-color: var(--bad); }
+  .opt.dim { opacity: 0.6; }
+  .opts.duo .opt { min-height: 5rem; font-size: 1.25rem; font-family: var(--f-display); }
+  .feedback { min-height: 3rem; display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+  .fb-text { font-weight: 600; flex: 1 1 16rem; }
+  .fb-text.good { color: var(--good); }
+  .fb-text.bad { color: var(--bad); }
+  .btn {
+    border: 0; border-radius: 6px; background: var(--accent); color: var(--accent-ink);
+    padding: 0.75rem 1.3rem; font-weight: 700; cursor: pointer;
+  }
+  .btn.ghost { background: transparent; color: var(--ink); border: 1.5px solid var(--ink); }
+  .btn:hover { filter: brightness(1.08); }
+
+  /* Rezultat */
+  .end { justify-items: start; }
+  .score { font-family: var(--f-display); font-weight: 700; font-size: clamp(4rem, 16vw, 7rem); line-height: 0.95; font-variant-numeric: tabular-nums; }
+  .score small { font-size: 0.35em; color: var(--ink-soft); font-weight: 500; }
+  .end .msg { font-size: 1.2rem; max-width: 40ch; }
+  .end .rec { font: 500 0.85rem var(--f-mono); color: var(--ink-soft); }
+  .actions { display: flex; gap: 12px; flex-wrap: wrap; }
+
+  @media (max-width: 640px) {
+    body { font-size: 16px; padding-block: 20px 36px; }
+    .tiles, .opts { grid-template-columns: minmax(0, 1fr); }
+    .opts.six { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .opts.duo { grid-template-columns: minmax(0, 1fr); }
+    .play, .end { padding: 16px; }
+    .brand svg { width: 52px; height: 52px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .tile, .opt { transition: none; }
+    .tile:hover, .opt:hover:not(:disabled) { transform: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <svg viewBox="0 0 64 64" role="img" aria-label="Roza vânturilor" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="32" cy="32" r="28"/>
+        <circle cx="32" cy="32" r="21" stroke-dasharray="2 4"/>
+        <polygon points="32,6 37,27 58,32 37,37 32,58 27,37 6,32 27,27" fill="currentColor" fill-opacity="0.12"/>
+        <polygon points="32,6 37,27 27,27" fill="var(--accent)" stroke="var(--accent)"/>
+        <circle cx="32" cy="32" r="2.5" fill="currentColor"/>
+      </svg>
+      <div>
+        <h1>Harta Mută</h1>
+        <p class="coords">Jocuri de geografie · 46° N 25° E</p>
+      </div>
+    </div>
+  </header>
+
+  <!-- ECRAN: alegerea jocului -->
+  <main id="home" class="wrap" style="gap:22px">
+    <p class="lead">Patru jocuri, <strong>zece întrebări</strong> fiecare. Fără cont, fără reclame. Alege unul și vezi cât de bine știi harta.</p>
+
+    <div class="zone">
+      <span class="zone-label" id="zone-label">Zonă pentru Capitale</span>
+      <div class="seg" role="radiogroup" aria-labelledby="zone-label">
+        <input type="radio" name="zone" id="zone-e" value="E" checked>
+        <label for="zone-e">Europa</label>
+        <input type="radio" name="zone" id="zone-w" value="W">
+        <label for="zone-w">Toată lumea</label>
+      </div>
+    </div>
+
+    <div class="tiles" id="tiles"></div>
+    <p class="note">Suprafețele și populațiile sunt valori aproximative, rotunjite.</p>
+  </main>
+
+  <!-- ECRAN: jocul -->
+  <section id="play" class="play" hidden aria-live="polite">
+    <div class="bar">
+      <button class="link" id="back" type="button">← Toate jocurile</button>
+      <div class="stats">
+        <span>Întrebarea <b id="st-round">1</b>/10</span>
+        <span>Scor <b id="st-score">0</b></span>
+        <span>Serie <b id="st-streak">0</b></span>
+      </div>
+    </div>
+    <div class="ticks" id="ticks" aria-hidden="true"></div>
+    <div class="q">
+      <p class="kicker" id="kicker"></p>
+      <h2 class="prompt" id="prompt"></h2>
+      <p class="ask" id="ask"></p>
+    </div>
+    <div class="opts" id="opts"></div>
+    <div class="feedback">
+      <p class="fb-text" id="fb"></p>
+      <button class="btn" id="next" type="button" hidden>Următoarea</button>
+    </div>
+  </section>
+
+  <!-- ECRAN: rezultat -->
+  <section id="end" class="end" hidden>
+    <p class="kicker" id="end-game"></p>
+    <div class="score"><span id="end-score">0</span><small>/10</small></div>
+    <p class="msg" id="end-msg"></p>
+    <p class="rec" id="end-rec"></p>
+    <div class="actions">
+      <button class="btn" id="again" type="button">Încă o rundă</button>
+      <button class="btn ghost" id="home-btn" type="button">Alte jocuri</button>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  var ROUNDS = 10;
+  var CONT = { E: 'Europa', A: 'Asia', F: 'Africa', N: 'America de Nord', S: 'America de Sud', O: 'Oceania' };
+  var CONT_ORDER = ['E', 'A', 'F', 'N', 'S', 'O'];
+
+  // nume, capitală, continent, suprafață (mii km²), populație (mil.), ambiguu între continente
+  var RAW = [
+    ['Albania','Tirana','E',28.7,2.8],['Austria','Viena','E',83.9,9.1],['Belgia','Bruxelles','E',30.7,11.7],
+    ['Bosnia și Herțegovina','Sarajevo','E',51.2,3.2],['Bulgaria','Sofia','E',111,6.4],['Cehia','Praga','E',78.9,10.8],
+    ['Croația','Zagreb','E',56.6,3.9],['Danemarca','Copenhaga','E',43.1,5.9],['Elveția','Berna','E',41.3,8.8],
+    ['Estonia','Tallinn','E',45.3,1.4],['Finlanda','Helsinki','E',338,5.6],['Franța','Paris','E',551,68],
+    ['Germania','Berlin','E',358,84],['Grecia','Atena','E',132,10.4],['Irlanda','Dublin','E',70.3,5.3],
+    ['Islanda','Reykjavík','E',103,0.38],['Italia','Roma','E',301,59],['Letonia','Riga','E',64.6,1.9],
+    ['Lituania','Vilnius','E',65.3,2.8],['Luxemburg','Luxemburg','E',2.6,0.66],['Macedonia de Nord','Skopje','E',25.7,1.8],
+    ['Malta','Valletta','E',0.3,0.54],['Moldova','Chișinău','E',33.8,null],['Muntenegru','Podgorica','E',13.8,0.62],
+    ['Norvegia','Oslo','E',null,5.5],['Olanda','Amsterdam','E',41.5,18],['Polonia','Varșovia','E',313,37],
+    ['Portugalia','Lisabona','E',92.2,10.3],['Regatul Unit','Londra','E',244,68],['România','București','E',238,19],
+    ['Serbia','Belgrad','E',88.4,6.7],['Slovacia','Bratislava','E',49,5.4],['Slovenia','Ljubljana','E',20.3,2.1],
+    ['Spania','Madrid','E',506,48],['Suedia','Stockholm','E',450,10.5],['Ucraina','Kiev','E',604,null],
+    ['Ungaria','Budapesta','E',93,9.6],['Belarus','Minsk','E',207.6,9.2],['Rusia','Moscova','E',17098,144,1],
+    ['Turcia','Ankara','A',784,85,1],
+    ['Afganistan','Kabul','A',652,null],['Arabia Saudită','Riad','A',2150,36],['China','Beijing','A',9597,1410],
+    ['Coreea de Sud','Seul','A',100,51],['Filipine','Manila','A',300,117],['India','New Delhi','A',3287,1430],
+    ['Indonezia','Jakarta','A',1905,278],['Iran','Teheran','A',1648,89],['Irak','Bagdad','A',438,45],
+    ['Japonia','Tokyo','A',378,124],['Kazahstan','Astana','A',2725,20,1],['Mongolia','Ulaanbaatar','A',1564,3.4],
+    ['Nepal','Kathmandu','A',147,30],['Pakistan','Islamabad','A',882,240],['Thailanda','Bangkok','A',513,72],
+    ['Vietnam','Hanoi','A',331,99],['Georgia','Tbilisi','A',69.7,3.7,1],['Armenia','Erevan','A',29.7,null,1],
+    ['Azerbaidjan','Baku','A',86.6,null,1],
+    ['Algeria','Alger','F',2382,46],['Angola','Luanda','F',1247,36],['Egipt','Cairo','F',1010,112],
+    ['Etiopia','Addis Abeba','F',1104,126],['Ghana','Accra','F',239,34],['Kenya','Nairobi','F',580,55],
+    ['Libia','Tripoli','F',1760,7],['Madagascar','Antananarivo','F',587,30],['Maroc','Rabat','F',447,37],
+    ['Nigeria','Abuja','F',924,224],['Senegal','Dakar','F',197,18],['Africa de Sud','Pretoria','F',1221,60],
+    ['Tanzania','Dodoma','F',945,67],['Tunisia','Tunis','F',164,12],
+    ['Canada','Ottawa','N',9985,40],['Cuba','Havana','N',110,11],['Mexic','Ciudad de Mexico','N',1964,128],
+    ['SUA','Washington, D.C.','N',9834,335],
+    ['Argentina','Buenos Aires','S',2780,46],['Brazilia','Brasília','S',8516,216],['Chile','Santiago','S',756,19.5],
+    ['Columbia','Bogotá','S',1142,52],['Ecuador','Quito','S',284,18],['Peru','Lima','S',1285,34],
+    ['Uruguay','Montevideo','S',176,3.4],['Venezuela','Caracas','S',916,28],
+    ['Australia','Canberra','O',7692,26],['Noua Zeelandă','Wellington','O',268,5.2]
+  ];
+  var COUNTRIES = RAW.map(function (r) {
+    return { n: r[0], c: r[1], k: r[2], a: r[3], p: r[4], amb: !!r[5] };
+  });
+
+  var COUNTIES = [
+    ['Alba','Alba Iulia'],['Arad','Arad'],['Argeș','Pitești'],['Bacău','Bacău'],['Bihor','Oradea'],
+    ['Bistrița-Năsăud','Bistrița'],['Botoșani','Botoșani'],['Brașov','Brașov'],['Brăila','Brăila'],['Buzău','Buzău'],
+    ['Caraș-Severin','Reșița'],['Călărași','Călărași'],['Cluj','Cluj-Napoca'],['Constanța','Constanța'],
+    ['Covasna','Sfântu Gheorghe'],['Dâmbovița','Târgoviște'],['Dolj','Craiova'],['Galați','Galați'],
+    ['Giurgiu','Giurgiu'],['Gorj','Târgu Jiu'],['Harghita','Miercurea Ciuc'],['Hunedoara','Deva'],
+    ['Ialomița','Slobozia'],['Iași','Iași'],['Maramureș','Baia Mare'],['Mehedinți','Drobeta-Turnu Severin'],
+    ['Mureș','Târgu Mureș'],['Neamț','Piatra Neamț'],['Olt','Slatina'],['Prahova','Ploiești'],
+    ['Satu Mare','Satu Mare'],['Sălaj','Zalău'],['Sibiu','Sibiu'],['Suceava','Suceava'],
+    ['Teleorman','Alexandria'],['Timiș','Timișoara'],['Tulcea','Tulcea'],['Vaslui','Vaslui'],
+    ['Vâlcea','Râmnicu Vâlcea'],['Vrancea','Focșani']
+  ].map(function (r) { return { j: r[0], s: r[1] }; });
+
+  // ---------- utilitare ----------
+  function $(id) { return document.getElementById(id); }
+  function shuffle(a) {
+    a = a.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+  var store = {
+    get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  };
+  function fmtArea(thousands) { return Math.round(thousands * 1000).toLocaleString('ro-RO') + ' km²'; }
+  function fmtPop(m) { return m.toLocaleString('ro-RO', { maximumFractionDigits: 2 }) + ' mil. locuitori'; }
+
+  // ---------- jocurile ----------
+  var zone = store.get('hm-zone') === 'W' ? 'W' : 'E';
+
+  var GAMES = {
+    capitale: {
+      name: 'Capitale',
+      blurb: 'Țara și capitala ei, în ambele sensuri.',
+      sample: 'Polonia → ?',
+      build: function () {
+        var pool = COUNTRIES.filter(function (x) { return x.c && (zone === 'W' || x.k === 'E'); });
+        return shuffle(pool).slice(0, ROUNDS).map(function (x) {
+          var rev = Math.random() < 0.35;
+          var near = shuffle(pool.filter(function (y) { return y !== x && y.k === x.k; }));
+          var far = shuffle(pool.filter(function (y) { return y !== x && y.k !== x.k; }));
+          var opts = shuffle([x].concat(near.concat(far).slice(0, 3)));
+          return rev ? {
+            kicker: 'Capitala', prompt: x.c, ask: 'Din ce țară este capitala?',
+            options: opts.map(function (o) { return { label: o.n }; }), correct: opts.indexOf(x),
+            reveal: x.c + ' este capitala: ' + x.n + '.'
+          } : {
+            kicker: 'Țara', prompt: x.n, ask: 'Care este capitala?',
+            options: opts.map(function (o) { return { label: o.c }; }), correct: opts.indexOf(x),
+            reveal: 'Capitala: ' + x.c + '.'
+          };
+        });
+      }
+    },
+    judete: {
+      name: 'Reședințe de județ',
+      blurb: 'Cele 40 de județe ale României și orașele lor de reședință.',
+      sample: 'Cluj → ?',
+      build: function () {
+        return shuffle(COUNTIES).slice(0, ROUNDS).map(function (x) {
+          var rev = Math.random() < 0.35;
+          var opts = shuffle([x].concat(shuffle(COUNTIES.filter(function (y) { return y !== x; })).slice(0, 3)));
+          return rev ? {
+            kicker: 'Reședința', prompt: x.s, ask: 'Ce județ are această reședință?',
+            options: opts.map(function (o) { return { label: o.j }; }), correct: opts.indexOf(x),
+            reveal: x.s + ' este reședința județului ' + x.j + '.'
+          } : {
+            kicker: 'Județul', prompt: x.j, ask: 'Care este reședința de județ?',
+            options: opts.map(function (o) { return { label: o.s }; }), correct: opts.indexOf(x),
+            reveal: 'Reședința: ' + x.s + '.'
+          };
+        });
+      }
+    },
+    compara: {
+      name: 'Mai mare, mai mic',
+      blurb: 'Două țări. Care are suprafața sau populația mai mare?',
+      sample: 'Suedia · Germania',
+      build: function () {
+        var rounds = [], used = {}, guard = 0;
+        while (rounds.length < ROUNDS && guard++ < 800) {
+          var f = Math.random() < 0.5 ? 'a' : 'p';
+          var pool = COUNTRIES.filter(function (x) { return x[f] != null; });
+          var two = shuffle(pool).slice(0, 2), x = two[0], y = two[1];
+          var hi = Math.max(x[f], y[f]), lo = Math.min(x[f], y[f]);
+          if (hi / lo < 1.3) continue;
+          var key = [x.n, y.n].sort().join('|') + f;
+          if (used[key]) continue;
+          used[key] = 1;
+          var win = x[f] > y[f] ? 0 : 1;
+          var fmt = f === 'a' ? fmtArea : fmtPop;
+          rounds.push({
+            kicker: f === 'a' ? 'Suprafață' : 'Populație',
+            prompt: f === 'a' ? 'Care țară este mai mare?' : 'Care țară are mai mulți locuitori?',
+            ask: '',
+            layout: 'duo',
+            options: [{ label: x.n, detail: fmt(x[f]) }, { label: y.n, detail: fmt(y[f]) }],
+            correct: win,
+            reveal: (win === 0 ? x.n : y.n) + ' are ' + (f === 'a' ? 'suprafața' : 'populația') + ' mai mare.'
+          });
+        }
+        return rounds;
+      }
+    },
+    continente: {
+      name: 'Continente',
+      blurb: 'Pune fiecare țară pe continentul ei.',
+      sample: 'Peru → ?',
+      build: function () {
+        var pool = COUNTRIES.filter(function (x) { return !x.amb; });
+        return shuffle(pool).slice(0, ROUNDS).map(function (x) {
+          return {
+            kicker: 'Țara', prompt: x.n, ask: 'În ce continent se află?',
+            layout: 'six',
+            options: CONT_ORDER.map(function (k) { return { label: CONT[k] }; }),
+            correct: CONT_ORDER.indexOf(x.k),
+            reveal: x.n + ' se află în ' + CONT[x.k] + '.'
+          };
+        });
+      }
+    }
+  };
+  var GAME_IDS = ['capitale', 'judete', 'compara', 'continente'];
+
+  // ---------- stare ----------
+  var S = null;
+
+  function bestKey(id) { return 'hm-best-' + id + (id === 'capitale' ? '-' + zone : ''); }
+  function getBest(id) { var v = parseInt(store.get(bestKey(id)), 10); return isNaN(v) ? null : v; }
+
+  function show(which) {
+    $('home').hidden = which !== 'home';
+    $('play').hidden = which !== 'play';
+    $('end').hidden = which !== 'end';
+  }
+
+  function renderHome() {
+    var host = $('tiles');
+    host.textContent = '';
+    GAME_IDS.forEach(function (id) {
+      var g = GAMES[id];
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'tile';
+      var best = getBest(id);
+      var h = document.createElement('h2'); h.textContent = g.name;
+      var p = document.createElement('p'); p.textContent = g.blurb;
+      var s = document.createElement('p'); s.className = 'sample'; s.textContent = g.sample;
+      var r = document.createElement('p'); r.className = 'record';
+      r.textContent = best === null ? 'Încă nejucat' : 'Record: ' + best + '/10';
+      b.appendChild(h); b.appendChild(p); b.appendChild(s); b.appendChild(r);
+      b.addEventListener('click', function () { start(id); });
+      host.appendChild(b);
+    });
+    show('home');
+  }
+
+  function start(id) {
+    S = { id: id, rounds: GAMES[id].build(), i: 0, score: 0, streak: 0, results: [], answered: false };
+    var t = $('ticks'); t.textContent = '';
+    S.rounds.forEach(function () { var d = document.createElement('span'); d.className = 'tick'; t.appendChild(d); });
+    show('play');
+    renderRound();
+  }
+
+  function renderRound() {
+    var r = S.rounds[S.i];
+    S.answered = false;
+    $('st-round').textContent = S.i + 1;
+    $('st-score').textContent = S.score;
+    $('st-streak').textContent = S.streak;
+    var ticks = $('ticks').children;
+    for (var k = 0; k < ticks.length; k++) {
+      ticks[k].className = 'tick' + (S.results[k] === true ? ' good' : S.results[k] === false ? ' bad' : k === S.i ? ' now' : '');
+    }
+    $('kicker').textContent = r.kicker;
+    $('prompt').textContent = r.prompt;
+    $('ask').textContent = r.ask || '';
+    $('ask').hidden = !r.ask;
+    var host = $('opts');
+    host.textContent = '';
+    host.className = 'opts' + (r.layout ? ' ' + r.layout : '');
+    r.options.forEach(function (o, idx) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'opt';
+      var kb = document.createElement('kbd'); kb.textContent = idx + 1;
+      var tx = document.createElement('span'); tx.className = 'txt';
+      var l = document.createElement('span'); l.textContent = o.label; tx.appendChild(l);
+      if (o.detail) { var d = document.createElement('span'); d.className = 'detail'; d.hidden = true; d.textContent = o.detail; tx.appendChild(d); }
+      b.appendChild(kb); b.appendChild(tx);
+      b.addEventListener('click', function () { choose(idx); });
+      host.appendChild(b);
+    });
+    var fb = $('fb'); fb.textContent = ''; fb.className = 'fb-text';
+    $('next').hidden = true;
+  }
+
+  function choose(idx) {
+    if (!S || S.answered) return;
+    S.answered = true;
+    var r = S.rounds[S.i];
+    var ok = idx === r.correct;
+    S.results[S.i] = ok;
+    if (ok) { S.score++; S.streak++; } else { S.streak = 0; }
+    var btns = $('opts').children;
+    for (var k = 0; k < btns.length; k++) {
+      btns[k].disabled = true;
+      if (k === r.correct) btns[k].classList.add('right');
+      else if (k === idx) btns[k].classList.add('wrong');
+      else btns[k].classList.add('dim');
+      var d = btns[k].querySelector('.detail'); if (d) d.hidden = false;
+    }
+    var fb = $('fb');
+    fb.className = 'fb-text ' + (ok ? 'good' : 'bad');
+    fb.textContent = (ok ? '✓ Corect. ' : '✗ Greșit. ') + r.reveal;
+    $('st-score').textContent = S.score;
+    $('st-streak').textContent = S.streak;
+    var ticks = $('ticks').children;
+    ticks[S.i].className = 'tick ' + (ok ? 'good' : 'bad');
+    var nx = $('next');
+    nx.textContent = S.i === S.rounds.length - 1 ? 'Vezi rezultatul' : 'Următoarea';
+    nx.hidden = false;
+    nx.focus();
+  }
+
+  function next() {
+    if (!S || !S.answered) return;
+    if (S.i === S.rounds.length - 1) return finish();
+    S.i++;
+    renderRound();
+  }
+
+  function finish() {
+    var total = S.rounds.length;
+    var prev = getBest(S.id);
+    var isNew = prev === null || S.score > prev;
+    if (isNew) store.set(bestKey(S.id), String(S.score));
+    $('end-game').textContent = GAMES[S.id].name + (S.id === 'capitale' ? ' · ' + (zone === 'W' ? 'Toată lumea' : 'Europa') : '');
+    $('end-score').textContent = S.score;
+    var msg = S.score >= 9 ? 'Excelent. Harta nu mai are secrete pentru tine.'
+      : S.score >= 6 ? 'Bine. Încă o rundă și îți depășești scorul.'
+      : 'Se învață repede. Încearcă din nou, întrebările se schimbă.';
+    $('end-msg').textContent = msg;
+    $('end-rec').textContent = isNew ? 'Record nou: ' + S.score + '/' + total : 'Recordul tău: ' + prev + '/' + total;
+    show('end');
+    $('again').focus();
+  }
+
+  // ---------- evenimente ----------
+  $('next').addEventListener('click', next);
+  $('back').addEventListener('click', renderHome);
+  $('home-btn').addEventListener('click', renderHome);
+  $('again').addEventListener('click', function () { start(S.id); });
+  document.addEventListener('keydown', function (e) {
+    if ($('play').hidden || e.ctrlKey || e.metaKey || e.altKey) return;
+    var n = parseInt(e.key, 10);
+    if (n >= 1 && n <= 6) choose(n - 1);
+  });
+  document.querySelectorAll('input[name="zone"]').forEach(function (el) {
+    el.checked = el.value === zone;
+    el.addEventListener('change', function () {
+      zone = el.value; store.set('hm-zone', zone); renderHome();
+    });
+  });
+
+  renderHome();
+})();
+</script>
+
+</body>
+</html>
