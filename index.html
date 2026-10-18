@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Harta Mută</title>
-<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Jocuri de geografie în română: capitale, județele României, continente și provocarea zilei.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;600;700&display=swap">
@@ -93,13 +93,17 @@
   .lead { max-width: 52ch; color: var(--ink-soft); font-size: 1.1rem; }
   .lead strong { color: var(--ink); font-weight: 600; }
 
-  /* Selector de zonă */
+  /* Bară de stare și selector de zonă */
+  .status { display: flex; align-items: center; justify-content: space-between; gap: 12px 18px; flex-wrap: wrap; }
+  .streak { font: 500 0.9rem var(--f-mono); color: var(--ink); }
+  .chip { border: 1.5px solid var(--ink); background: var(--paper); border-radius: 6px; padding: 0.35rem 0.8rem; font: 500 0.85rem var(--f-mono); cursor: pointer; }
+  .chip[aria-pressed="false"] { color: var(--ink-soft); border-color: var(--rule-strong); }
   .zone { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
   .zone-label { font: 500 0.78rem var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
   .seg { display: inline-flex; border: 1.5px solid var(--ink); border-radius: 6px; overflow: hidden; background: var(--paper); }
   .seg input { position: absolute; opacity: 0; pointer-events: none; }
   .seg label { padding: 0.45rem 1rem; cursor: pointer; font-weight: 600; }
-  .seg label + input + label, .seg input + label + input + label { border-left: 1.5px solid var(--ink); }
+  .seg input + label + input + label { border-left: 1.5px solid var(--ink); }
   .seg input:checked + label { background: var(--ink); color: var(--sea); }
   .seg input:focus-visible + label { outline: 3px solid var(--accent); outline-offset: -3px; }
 
@@ -111,18 +115,30 @@
     padding: 20px; cursor: pointer; min-width: 0;
     transition: transform 0.12s ease, box-shadow 0.12s ease;
   }
-  .tile:hover { transform: translate(-2px, -2px); box-shadow: 4px 4px 0 var(--accent); }
+  .tile.daily { grid-column: 1 / -1; border-color: var(--accent); }
+  .tile:hover:not(:disabled) { transform: translate(-2px, -2px); box-shadow: 4px 4px 0 var(--accent); }
+  .tile:disabled { cursor: default; }
   .tile h2 { font-size: 1.6rem; font-weight: 700; }
   .tile p { color: var(--ink-soft); }
   .tile .sample { font: 500 0.95rem var(--f-mono); color: var(--ink); border-top: 1px dashed var(--rule-strong); padding-top: 10px; }
   .tile .record { font: 500 0.78rem var(--f-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
   .note { font: 400 0.85rem var(--f-mono); color: var(--ink-soft); }
 
+  /* Insigne */
+  .badges-box { background: var(--paper); border: 1.5px solid var(--ink); border-radius: 8px; padding: 0; }
+  .badges-box summary { cursor: pointer; padding: 14px 18px; font: 500 0.9rem var(--f-mono); letter-spacing: 0.04em; }
+  .badges { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 10px; padding: 0 18px 18px; }
+  .badge { display: grid; gap: 2px; padding: 10px 12px; border: 1.5px dashed var(--rule-strong); border-radius: 6px; color: var(--ink-soft); min-width: 0; }
+  .badge strong { font-family: var(--f-display); font-size: 1.05rem; }
+  .badge span { font-size: 0.9rem; }
+  .badge.on { border-style: solid; border-color: var(--good); background: var(--good-bg); color: var(--ink); }
+  .badge.on strong { color: var(--good); }
+
   /* Ecran de joc */
   .play, .end { background: var(--paper); border: 1.5px solid var(--ink); border-radius: 8px; padding: 22px; display: grid; gap: 22px; }
   .bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
   .link { background: none; border: 0; padding: 4px 0; cursor: pointer; font-weight: 600; color: var(--ink); text-decoration: underline; text-underline-offset: 4px; }
-  .stats { display: flex; gap: 18px; font: 500 0.85rem var(--f-mono); font-variant-numeric: tabular-nums; color: var(--ink-soft); }
+  .stats { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; font: 500 0.85rem var(--f-mono); font-variant-numeric: tabular-nums; color: var(--ink-soft); }
   .stats b { color: var(--ink); font-weight: 500; }
   .ticks { display: flex; gap: 5px; }
   .tick { flex: 1; height: 6px; border-radius: 2px; background: var(--rule-strong); }
@@ -146,20 +162,27 @@
   .opt kbd { font: 500 0.75rem var(--f-mono); color: var(--ink-soft); border: 1px solid var(--rule-strong); border-radius: 3px; padding: 0.1rem 0.4rem; flex: none; }
   .opt:hover:not(:disabled) { transform: translate(-2px, -2px); box-shadow: 3px 3px 0 var(--accent); }
   .opt:disabled { cursor: default; }
-  .opt.right { background: var(--good-bg); border-color: var(--good); }
-  .opt.wrong { background: var(--bad-bg); border-color: var(--bad); }
+  .opt.right { background: var(--good-bg); border-color: var(--good); animation: pop 0.28s ease; }
+  .opt.wrong { background: var(--bad-bg); border-color: var(--bad); animation: shake 0.32s ease; }
   .opt.dim { opacity: 0.6; }
   .opts.duo .opt { min-height: 5rem; font-size: 1.25rem; font-family: var(--f-display); }
   .feedback { min-height: 3rem; display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
   .fb-text { font-weight: 600; flex: 1 1 16rem; }
   .fb-text.good { color: var(--good); }
   .fb-text.bad { color: var(--bad); }
+  .fact { border-left: 4px solid var(--accent); padding: 4px 0 4px 14px; color: var(--ink); animation: fade 0.3s ease; }
+  .fact-k { font: 500 0.78rem var(--f-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); margin-right: 6px; }
   .btn {
     border: 0; border-radius: 6px; background: var(--accent); color: var(--accent-ink);
     padding: 0.75rem 1.3rem; font-weight: 700; cursor: pointer;
   }
   .btn.ghost { background: transparent; color: var(--ink); border: 1.5px solid var(--ink); }
   .btn:hover { filter: brightness(1.08); }
+  .btn:disabled { opacity: 0.55; cursor: default; filter: none; }
+
+  @keyframes pop { 0% { transform: scale(1); } 40% { transform: scale(1.04); } 100% { transform: scale(1); } }
+  @keyframes shake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-6px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(3px); } }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 
   /* Rezultat */
   .end { justify-items: start; }
@@ -167,6 +190,12 @@
   .score small { font-size: 0.35em; color: var(--ink-soft); font-weight: 500; }
   .end .msg { font-size: 1.2rem; max-width: 40ch; }
   .end .rec { font: 500 0.85rem var(--f-mono); color: var(--ink-soft); }
+  .end .rec.good { color: var(--good); }
+  .wrong-box { display: grid; gap: 8px; width: 100%; }
+  .wrong-box h3 { font-size: 1.2rem; }
+  .wrong-list { list-style: none; margin: 0; padding: 0; border: 1.5px solid var(--bad); border-radius: 6px; background: var(--bad-bg); }
+  .wrong-list li { padding: 0.5rem 0.9rem; border-top: 1px dashed var(--rule-strong); overflow-wrap: anywhere; }
+  .wrong-list li:first-child { border-top: 0; }
   .actions { display: flex; gap: 12px; flex-wrap: wrap; }
 
   /* Clasamente */
@@ -185,7 +214,6 @@
   .submit label { font: 500 0.78rem var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
   .submit .row { display: flex; gap: 10px; flex-wrap: wrap; }
   .submit input { flex: 1 1 10rem; min-width: 0; padding: 0.7rem 0.8rem; border: 1.5px solid var(--ink); border-radius: 6px; background: var(--paper); color: var(--ink); font: inherit; }
-  .btn:disabled { opacity: 0.55; cursor: default; filter: none; }
 
   @media (max-width: 640px) {
     body { font-size: 16px; padding-block: 20px 36px; }
@@ -197,12 +225,41 @@
   }
   @media (prefers-reduced-motion: reduce) {
     .tile, .opt { transition: none; }
-    .tile:hover, .opt:hover:not(:disabled) { transform: none; }
+    .tile:hover:not(:disabled), .opt:hover:not(:disabled) { transform: none; }
+    .opt.right, .opt.wrong, .fact { animation: none; }
   }
+
+  /* Unelte, serie, insigne */
+  .tools { display: flex; justify-content: flex-end; }
+  .chip { border: 1.5px solid var(--ink); background: var(--paper); border-radius: 999px; padding: 0.3rem 0.85rem; font: 500 0.8rem var(--f-mono); cursor: pointer; }
+  .chip[aria-pressed="false"] { color: var(--ink-soft); border-style: dashed; }
+  .strip { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .streak { font: 500 0.85rem var(--f-mono); padding: 0.3rem 0.85rem; border-radius: 999px; background: var(--ink); color: var(--sea); }
+  .badge { font: 500 0.78rem var(--f-mono); padding: 0.25rem 0.7rem; border-radius: 999px; border: 1.5px solid var(--accent); color: var(--accent); }
+  .badge.locked { border: 1.5px dashed var(--rule-strong); color: var(--ink-soft); }
+  .tile.daily { grid-column: 1 / -1; border-color: var(--accent); }
+  .newbadge { font: 500 0.9rem var(--f-mono); color: var(--accent); }
+
+  /* Curiozitate și greșeli */
+  .fact { margin: 0; padding: 0.8rem 1rem; border-left: 4px solid var(--accent); background: var(--sea); border-radius: 0 6px 6px 0; max-width: 60ch; }
+  .wrong-box { width: 100%; display: grid; gap: 8px; }
+  .wrong-box h3 { font-size: 1.1rem; }
+  .wrong-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font: 500 0.92rem var(--f-mono); }
+  .wrong-list li { border-left: 3px solid var(--bad); padding: 0.2rem 0 0.2rem 0.7rem; overflow-wrap: anywhere; }
+
+  @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+  @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.03); } 100% { transform: scale(1); } }
+  .opt.wrong { animation: shake 0.35s ease; }
+  .opt.right { animation: pop 0.3s ease; }
+  @media (prefers-reduced-motion: reduce) { .opt.wrong, .opt.right { animation: none; } }
 </style>
 </head>
 <body>
 <div class="wrap">
+  <div class="tools">
+    <button class="chip" id="snd" type="button" aria-pressed="true">Sunet: pornit</button>
+  </div>
+
   <header>
     <div class="brand">
       <svg viewBox="0 0 64 64" role="img" aria-label="Roza vânturilor" fill="none" stroke="currentColor" stroke-width="2">
@@ -221,7 +278,9 @@
 
   <!-- ECRAN: alegerea jocului -->
   <main id="home" class="wrap" style="gap:22px">
-    <p class="lead">Patru jocuri, <strong>zece întrebări</strong> fiecare. Fără cont, fără reclame. Alege unul și vezi cât de bine știi harta.</p>
+    <p class="lead">Cinci moduri de joc, <strong>zece întrebări</strong> fiecare. Fără cont, fără reclame. Alege unul și vezi cât de bine știi harta.</p>
+
+    <div class="strip" id="strip" aria-label="Seria și insignele tale"></div>
 
     <div class="zone">
       <span class="zone-label" id="zone-label">Zonă pentru Capitale</span>
@@ -243,9 +302,9 @@
     <div class="bar">
       <button class="link" id="back" type="button">← Toate jocurile</button>
       <div class="stats">
-        <span>Întrebarea <b id="st-round">1</b>/10</span>
+        <span>Întrebarea <b id="st-round">1</b>/<span id="st-total">10</span></span>
         <span>Scor <b id="st-score">0</b></span>
-        <span>Serie <b id="st-streak">0</b></span>
+        <span>La rând <b id="st-streak">0</b></span>
       </div>
     </div>
     <div class="ticks" id="ticks" aria-hidden="true"></div>
@@ -259,6 +318,7 @@
       <p class="fb-text" id="fb"></p>
       <button class="btn" id="next" type="button" hidden>Următoarea</button>
     </div>
+    <p class="fact" id="fact" hidden></p>
   </section>
 
   <!-- ECRAN: clasamente -->
@@ -273,9 +333,16 @@
   <!-- ECRAN: rezultat -->
   <section id="end" class="end" hidden>
     <p class="kicker" id="end-game"></p>
-    <div class="score"><span id="end-score">0</span><small>/10</small></div>
+    <div class="score"><span id="end-score">0</span><small>/<span id="end-total">10</span></small></div>
     <p class="msg" id="end-msg"></p>
     <p class="rec" id="end-rec"></p>
+    <p class="newbadge" id="end-badges" hidden></p>
+
+    <div class="wrong-box" id="wrong-box" hidden>
+      <h3>Greșelile tale</h3>
+      <ul class="wrong-list" id="wrong-list"></ul>
+    </div>
+
     <div class="submit" id="submit-box" hidden>
       <label for="player-name">Numele tău în clasament</label>
       <div class="row">
@@ -285,8 +352,10 @@
       <p class="board-msg" id="send-msg"></p>
     </div>
     <ol class="board" id="end-board" hidden></ol>
+
     <div class="actions">
-      <button class="btn" id="again" type="button">Încă o rundă</button>
+      <button class="btn" id="repeat-wrong" type="button" hidden>Repetă greșelile</button>
+      <button class="btn ghost" id="again" type="button">Încă o rundă</button>
       <button class="btn ghost" id="home-btn" type="button">Alte jocuri</button>
     </div>
   </section>
@@ -294,7 +363,15 @@
 
 <script>
 (function () {
+  'use strict';
+
+  // ---------- setări ----------
+  var CONFIG = { url: 'https://apoaelqidmsfadypvfmf.supabase.co', key: 'sb_publishable_7ce0hrSOgMHJMEiVdYomtg_KZ1kofQq' };
+  var ENABLED = !!(CONFIG.url && CONFIG.key);
+  // Statistici de vizite: pune aici Website ID din Umami Cloud (umami.is). Cât timp e gol, nu se încarcă nimic.
+  var UMAMI_ID = '';
   var ROUNDS = 10;
+
   var CONT = { E: 'Europa', A: 'Asia', F: 'Africa', N: 'America de Nord', S: 'America de Sud', O: 'Oceania' };
   var CONT_ORDER = ['E', 'A', 'F', 'N', 'S', 'O'];
 
@@ -350,12 +427,105 @@
     ['Vâlcea','Râmnicu Vâlcea'],['Vrancea','Focșani']
   ].map(function (r) { return { j: r[0], s: r[1] }; });
 
+  // Curiozități afișate după răspuns (doar unde sunt sigure)
+  var FACTS_C = {
+    'Franța': 'Franța are 12 fusuri orare, cele mai multe din lume, din cauza teritoriilor ei de peste mări.',
+    'Rusia': 'Rusia se întinde pe 11 fusuri orare.',
+    'Australia': 'Canberra a fost aleasă capitală ca să nu aleagă Sydney sau Melbourne, două orașe rivale.',
+    'Brazilia': 'Brasília a fost construită de la zero și inaugurată în 1960.',
+    'Turcia': 'Cel mai mare oraș al Turciei este Istanbul, nu capitala Ankara.',
+    'Canada': 'Canada are cea mai lungă linie de coastă din lume.',
+    'SUA': 'Washington, D.C. nu face parte din niciun stat.',
+    'Elveția': 'Capitala Elveției este Berna, nu Zürich sau Geneva.',
+    'Olanda': 'Amsterdam este capitala, dar guvernul olandez stă la Haga.',
+    'Islanda': 'Reykjavík este cea mai nordică capitală a unui stat independent.',
+    'Malta': 'Valletta este una dintre cele mai mici capitale din Uniunea Europeană.',
+    'Japonia': 'Zona metropolitană Tokyo este printre cele mai populate din lume.',
+    'Egipt': 'Piramidele din Giza se văd de la marginea Cairo-ului.',
+    'Africa de Sud': 'Africa de Sud are trei capitale: Pretoria, Cape Town și Bloemfontein.',
+    'Tanzania': 'Dodoma este capitala oficială, dar cel mai mare oraș este Dar es Salaam.',
+    'Nigeria': 'Abuja a înlocuit Lagosul ca capitală în 1991.',
+    'Kazahstan': 'Capitala Astana a purtat între 2019 și 2022 numele Nur-Sultan.',
+    'China': 'China folosește un singur fus orar oficial, ora Beijingului, pe tot teritoriul.',
+    'Mongolia': 'Mongolia are cea mai mică densitate a populației dintre toate statele independente.',
+    'Nepal': 'Nepal are singurul steag național care nu este dreptunghiular.',
+    'România': 'Palatul Parlamentului din București este una dintre cele mai mari clădiri administrative din lume.',
+    'Ungaria': 'Budapesta s-a format în 1873 din unirea orașelor Buda, Óbuda și Pesta.',
+    'Polonia': 'Centrul vechi al Varșoviei a fost reconstruit după al Doilea Război Mondial și este în patrimoniul UNESCO.',
+    'Norvegia': 'Oslo s-a numit Christiania până în 1925.',
+    'Grecia': 'Atena este unul dintre cele mai vechi orașe locuite continuu din lume.',
+    'Italia': 'În interiorul Romei se află un stat separat, Vaticanul.',
+    'Spania': 'Madrid este cea mai înaltă capitală din Uniunea Europeană, la circa 650 m altitudine.',
+    'Ecuador': 'Quito, la aproape 2.850 m altitudine, este una dintre cele mai înalte capitale din lume.',
+    'Chile': 'Chile este o fâșie lungă de aproximativ 4.300 km și lată de doar câteva sute.',
+    'Venezuela': 'Salto Ángel, cea mai înaltă cascadă din lume, se află în Venezuela.',
+    'Noua Zeelandă': 'Wellington este una dintre cele mai sudice capitale din lume.',
+    'Indonezia': 'Indonezia are peste 17.000 de insule.',
+    'Filipine': 'Filipine are peste 7.000 de insule.',
+    'Thailanda': 'Numele complet al Bangkokului este unul dintre cele mai lungi nume de oraș din lume.',
+    'Arabia Saudită': 'Arabia Saudită nu are niciun râu permanent.',
+    'Kenya': 'Numele Nairobi vine din limba maasai și înseamnă „apă rece”.',
+    'Algeria': 'Algeria este cea mai mare țară din Africa.',
+    'Madagascar': 'Madagascar este a patra insulă ca mărime din lume.',
+    'Danemarca': 'Copenhaga se află pe insula Sjælland, nu pe continent.',
+    'Suedia': 'Stockholm este construit pe 14 insule.',
+    'Estonia': 'Skype a fost dezvoltat de ingineri estonieni.',
+    'Serbia': 'Belgradul se află la confluența Dunării cu Sava.',
+    'Belgia': 'Bruxelles găzduiește instituții importante ale Uniunii Europene.',
+    'Germania': 'Berlinul a fost împărțit de un zid între 1961 și 1989.',
+    'Mexic': 'Ciudad de Mexico este construit pe locul fostului lac Texcoco.',
+    'Columbia': 'Bogotá se află la aproape 2.600 m altitudine.',
+    'Etiopia': 'Etiopia folosește un calendar cu 13 luni.',
+    'Senegal': 'Dakar se află lângă cel mai vestic punct al Africii continentale.',
+    'Tunisia': 'Ruinele Cartaginei se află lângă Tunis.',
+    'Pakistan': 'Islamabad a fost construit în anii 1960 ca nouă capitală.'
+  };
+  var FACTS_J = {
+    'Bacău': 'Râul Bistrița străbate județul Bacău.',
+    'Tulcea': 'Delta Dunării se află în județul Tulcea.',
+    'Constanța': 'Portul Constanța este cel mai mare port românesc la Marea Neagră.',
+    'Brașov': 'Biserica Neagră din Brașov este considerată cea mai mare biserică gotică din România.',
+    'Sibiu': 'Sibiu a fost Capitală Culturală Europeană în 2007.',
+    'Cluj': 'Universitatea Babeș-Bolyai din Cluj-Napoca este cea mai mare universitate din România.',
+    'Hunedoara': 'Castelul Corvinilor se află în orașul Hunedoara.',
+    'Alba': 'Marea Unire din 1 decembrie 1918 s-a proclamat la Alba Iulia.',
+    'Iași': 'Iași a fost capitala Moldovei până la unirea din 1859.',
+    'Suceava': 'Mănăstirile pictate din Bucovina, precum Voroneț, sunt în patrimoniul UNESCO.',
+    'Maramureș': 'Bisericile de lemn din Maramureș sunt în patrimoniul UNESCO.',
+    'Timiș': 'Timișoara a fost unul dintre primele orașe din Europa cu iluminat electric pe străzi, în 1884.',
+    'Prahova': 'Ploieștiul a fost un mare centru al industriei petroliere încă din secolul al XIX-lea.',
+    'Gorj': 'Constantin Brâncuși s-a născut în Gorj, la Hobița.',
+    'Harghita': 'Lacul Sfânta Ana, singurul lac vulcanic din România, se află în Harghita.',
+    'Neamț': 'Cetatea Neamț a fost construită în secolul al XIV-lea.',
+    'Vaslui': 'Lângă Vaslui, Ștefan cel Mare a câștigat bătălia de la Podul Înalt, în 1475.',
+    'Botoșani': 'Mihai Eminescu și-a petrecut copilăria în județul Botoșani.',
+    'Buzău': 'Vulcanii noroioși de la Berca se află în județul Buzău.',
+    'Dâmbovița': 'Târgoviște a fost mult timp capitala Țării Românești.',
+    'Giurgiu': 'Podul Prieteniei leagă Giurgiu de orașul bulgar Ruse.',
+    'Mehedinți': 'Barajul Porțile de Fier I de pe Dunăre se află lângă Drobeta-Turnu Severin.',
+    'Vrancea': 'Vrancea este zona cu cele mai multe cutremure din România.'
+  };
+
   // ---------- utilitare ----------
+  var rng = Math.random;
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      var t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function hashStr(s) {
+    var h = 2166136261;
+    for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return h >>> 0;
+  }
   function $(id) { return document.getElementById(id); }
   function shuffle(a) {
     a = a.slice();
     for (var i = a.length - 1; i > 0; i--) {
-      var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t;
+      var j = Math.floor(rng() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t;
     }
     return a;
   }
@@ -363,123 +533,247 @@
     get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
     set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
   };
+  function getJSON(k, def) { try { var v = JSON.parse(store.get(k)); return v === null || v === undefined ? def : v; } catch (e) { return def; } }
+  function setJSON(k, v) { store.set(k, JSON.stringify(v)); }
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+  function todayStr() {
+    try {
+      return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Bucharest', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    } catch (e) {
+      var d = new Date();
+      return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+    }
+  }
+  function dayBefore(s) {
+    var d = new Date(s + 'T12:00:00Z');
+    d.setUTCDate(d.getUTCDate() - 1);
+    return d.toISOString().slice(0, 10);
+  }
   function fmtArea(thousands) { return Math.round(thousands * 1000).toLocaleString('ro-RO') + ' km²'; }
   function fmtPop(m) { return m.toLocaleString('ro-RO', { maximumFractionDigits: 2 }) + ' mil. locuitori'; }
 
-  // ---------- jocurile ----------
-  var zone = store.get('hm-zone') === 'W' ? 'W' : 'E';
+  // ---------- statistici (Umami, opțional) ----------
+  if (UMAMI_ID) {
+    var sc = document.createElement('script');
+    sc.defer = true; sc.src = 'https://cloud.umami.is/script.js';
+    sc.setAttribute('data-website-id', UMAMI_ID);
+    document.head.appendChild(sc);
+  }
+  function track(name, data) {
+    try { if (window.umami && window.umami.track) window.umami.track(name, data); } catch (e) {}
+  }
+
+  // ---------- sunet ----------
+  var muted = store.get('hm-muted') === '1';
+  var audio = null;
+  function actx() {
+    if (!audio) {
+      try { var AC = window.AudioContext || window.webkitAudioContext; if (AC) audio = new AC(); } catch (e) {}
+    }
+    if (audio && audio.state === 'suspended') { try { audio.resume(); } catch (e) {} }
+    return audio;
+  }
+  function tone(freq, start, dur, type, vol) {
+    var c = actx(); if (!c) return;
+    try {
+      var o = c.createOscillator(), g = c.createGain(), t = c.currentTime + start;
+      o.type = type || 'sine'; o.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol || 0.15, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g); g.connect(c.destination);
+      o.start(t); o.stop(t + dur + 0.03);
+    } catch (e) {}
+  }
+  function sfx(kind) {
+    if (muted) return;
+    if (kind === 'ok') { tone(660, 0, 0.12, 'sine'); tone(880, 0.1, 0.2, 'sine'); }
+    else if (kind === 'no') { tone(200, 0, 0.22, 'sawtooth', 0.09); tone(150, 0.13, 0.28, 'sawtooth', 0.09); }
+    else if (kind === 'win') { tone(523, 0, 0.12, 'triangle'); tone(659, 0.12, 0.12, 'triangle'); tone(784, 0.24, 0.3, 'triangle'); }
+  }
+  function renderSound() {
+    var b = $('snd');
+    b.setAttribute('aria-pressed', String(!muted));
+    b.textContent = muted ? 'Sunet: oprit' : 'Sunet: pornit';
+  }
+
+  // ---------- construirea întrebărilor ----------
+  function buildCapitale(z) {
+    var pool = COUNTRIES.filter(function (x) { return x.c && (z === 'W' || x.k === 'E'); });
+    return shuffle(pool).slice(0, ROUNDS).map(function (x) {
+      var rev = rng() < 0.35;
+      var near = shuffle(pool.filter(function (y) { return y !== x && y.k === x.k; }));
+      var far = shuffle(pool.filter(function (y) { return y !== x && y.k !== x.k; }));
+      var opts = shuffle([x].concat(near.concat(far).slice(0, 3)));
+      var fact = FACTS_C[x.n];
+      return rev ? {
+        kicker: 'Capitala', prompt: x.c, ask: 'Din ce țară este capitala?',
+        options: opts.map(function (o) { return { label: o.n }; }), correct: opts.indexOf(x),
+        reveal: x.c + ' este capitala: ' + x.n + '.', short: x.c + ' → ' + x.n, fact: fact
+      } : {
+        kicker: 'Țara', prompt: x.n, ask: 'Care este capitala?',
+        options: opts.map(function (o) { return { label: o.c }; }), correct: opts.indexOf(x),
+        reveal: 'Capitala: ' + x.c + '.', short: x.n + ' → ' + x.c, fact: fact
+      };
+    });
+  }
+  function buildJudete() {
+    return shuffle(COUNTIES).slice(0, ROUNDS).map(function (x) {
+      var rev = rng() < 0.35;
+      var opts = shuffle([x].concat(shuffle(COUNTIES.filter(function (y) { return y !== x; })).slice(0, 3)));
+      var fact = FACTS_J[x.j];
+      return rev ? {
+        kicker: 'Reședința', prompt: x.s, ask: 'Ce județ are această reședință?',
+        options: opts.map(function (o) { return { label: o.j }; }), correct: opts.indexOf(x),
+        reveal: x.s + ' este reședința județului ' + x.j + '.', short: x.s + ' → ' + x.j, fact: fact
+      } : {
+        kicker: 'Județul', prompt: x.j, ask: 'Care este reședința de județ?',
+        options: opts.map(function (o) { return { label: o.s }; }), correct: opts.indexOf(x),
+        reveal: 'Reședința: ' + x.s + '.', short: x.j + ' → ' + x.s, fact: fact
+      };
+    });
+  }
+  function buildCompara() {
+    var rounds = [], used = {}, guard = 0;
+    while (rounds.length < ROUNDS && guard++ < 800) {
+      var f = rng() < 0.5 ? 'a' : 'p';
+      var pool = COUNTRIES.filter(function (x) { return x[f] != null; });
+      var two = shuffle(pool).slice(0, 2), x = two[0], y = two[1];
+      var hi = Math.max(x[f], y[f]), lo = Math.min(x[f], y[f]);
+      if (hi / lo < 1.3) continue;
+      var key = [x.n, y.n].sort().join('|') + f;
+      if (used[key]) continue;
+      used[key] = 1;
+      var win = x[f] > y[f] ? 0 : 1;
+      var winner = win === 0 ? x : y;
+      var fmt = f === 'a' ? fmtArea : fmtPop;
+      rounds.push({
+        kicker: f === 'a' ? 'Suprafață' : 'Populație',
+        prompt: f === 'a' ? 'Care țară este mai mare?' : 'Care țară are mai mulți locuitori?',
+        ask: '', layout: 'duo',
+        options: [{ label: x.n, detail: fmt(x[f]) }, { label: y.n, detail: fmt(y[f]) }],
+        correct: win,
+        reveal: winner.n + ' are ' + (f === 'a' ? 'suprafața' : 'populația') + ' mai mare.',
+        short: x.n + ' sau ' + y.n + ' → ' + winner.n,
+        fact: FACTS_C[winner.n]
+      });
+    }
+    return rounds;
+  }
+  function buildContinente() {
+    var pool = COUNTRIES.filter(function (x) { return !x.amb; });
+    return shuffle(pool).slice(0, ROUNDS).map(function (x) {
+      return {
+        kicker: 'Țara', prompt: x.n, ask: 'În ce continent se află?', layout: 'six',
+        options: CONT_ORDER.map(function (k) { return { label: CONT[k] }; }),
+        correct: CONT_ORDER.indexOf(x.k),
+        reveal: x.n + ' se află în ' + CONT[x.k] + '.',
+        short: x.n + ' → ' + CONT[x.k], fact: FACTS_C[x.n]
+      };
+    });
+  }
+  // Provocarea zilei: aceleași 10 întrebări pentru toți, într-o zi (data în ora României).
+  function buildDaily(date) {
+    var prev = rng;
+    rng = mulberry32(hashStr('harta-muta-' + date));
+    try {
+      var parts = [].concat(
+        buildCapitale('E').slice(0, 3), buildJudete().slice(0, 2),
+        buildCompara().slice(0, 2), buildContinente().slice(0, 3));
+      return shuffle(parts);
+    } finally { rng = prev; }
+  }
+  function reshuffleRound(r) {
+    if (r.layout === 'six') return r;
+    var correct = r.options[r.correct];
+    var opts = shuffle(r.options);
+    var copy = {};
+    for (var k in r) copy[k] = r[k];
+    copy.options = opts; copy.correct = opts.indexOf(correct);
+    return copy;
+  }
 
   var GAMES = {
-    capitale: {
-      name: 'Capitale',
-      blurb: 'Țara și capitala ei, în ambele sensuri.',
-      sample: 'Polonia → ?',
-      build: function () {
-        var pool = COUNTRIES.filter(function (x) { return x.c && (zone === 'W' || x.k === 'E'); });
-        return shuffle(pool).slice(0, ROUNDS).map(function (x) {
-          var rev = Math.random() < 0.35;
-          var near = shuffle(pool.filter(function (y) { return y !== x && y.k === x.k; }));
-          var far = shuffle(pool.filter(function (y) { return y !== x && y.k !== x.k; }));
-          var opts = shuffle([x].concat(near.concat(far).slice(0, 3)));
-          return rev ? {
-            kicker: 'Capitala', prompt: x.c, ask: 'Din ce țară este capitala?',
-            options: opts.map(function (o) { return { label: o.n }; }), correct: opts.indexOf(x),
-            reveal: x.c + ' este capitala: ' + x.n + '.'
-          } : {
-            kicker: 'Țara', prompt: x.n, ask: 'Care este capitala?',
-            options: opts.map(function (o) { return { label: o.c }; }), correct: opts.indexOf(x),
-            reveal: 'Capitala: ' + x.c + '.'
-          };
-        });
-      }
-    },
-    judete: {
-      name: 'Reședințe de județ',
-      blurb: 'Cele 40 de județe ale României și orașele lor de reședință.',
-      sample: 'Cluj → ?',
-      build: function () {
-        return shuffle(COUNTIES).slice(0, ROUNDS).map(function (x) {
-          var rev = Math.random() < 0.35;
-          var opts = shuffle([x].concat(shuffle(COUNTIES.filter(function (y) { return y !== x; })).slice(0, 3)));
-          return rev ? {
-            kicker: 'Reședința', prompt: x.s, ask: 'Ce județ are această reședință?',
-            options: opts.map(function (o) { return { label: o.j }; }), correct: opts.indexOf(x),
-            reveal: x.s + ' este reședința județului ' + x.j + '.'
-          } : {
-            kicker: 'Județul', prompt: x.j, ask: 'Care este reședința de județ?',
-            options: opts.map(function (o) { return { label: o.s }; }), correct: opts.indexOf(x),
-            reveal: 'Reședința: ' + x.s + '.'
-          };
-        });
-      }
-    },
-    compara: {
-      name: 'Mai mare, mai mic',
-      blurb: 'Două țări. Care are suprafața sau populația mai mare?',
-      sample: 'Suedia · Germania',
-      build: function () {
-        var rounds = [], used = {}, guard = 0;
-        while (rounds.length < ROUNDS && guard++ < 800) {
-          var f = Math.random() < 0.5 ? 'a' : 'p';
-          var pool = COUNTRIES.filter(function (x) { return x[f] != null; });
-          var two = shuffle(pool).slice(0, 2), x = two[0], y = two[1];
-          var hi = Math.max(x[f], y[f]), lo = Math.min(x[f], y[f]);
-          if (hi / lo < 1.3) continue;
-          var key = [x.n, y.n].sort().join('|') + f;
-          if (used[key]) continue;
-          used[key] = 1;
-          var win = x[f] > y[f] ? 0 : 1;
-          var fmt = f === 'a' ? fmtArea : fmtPop;
-          rounds.push({
-            kicker: f === 'a' ? 'Suprafață' : 'Populație',
-            prompt: f === 'a' ? 'Care țară este mai mare?' : 'Care țară are mai mulți locuitori?',
-            ask: '',
-            layout: 'duo',
-            options: [{ label: x.n, detail: fmt(x[f]) }, { label: y.n, detail: fmt(y[f]) }],
-            correct: win,
-            reveal: (win === 0 ? x.n : y.n) + ' are ' + (f === 'a' ? 'suprafața' : 'populația') + ' mai mare.'
-          });
-        }
-        return rounds;
-      }
-    },
-    continente: {
-      name: 'Continente',
-      blurb: 'Pune fiecare țară pe continentul ei.',
-      sample: 'Peru → ?',
-      build: function () {
-        var pool = COUNTRIES.filter(function (x) { return !x.amb; });
-        return shuffle(pool).slice(0, ROUNDS).map(function (x) {
-          return {
-            kicker: 'Țara', prompt: x.n, ask: 'În ce continent se află?',
-            layout: 'six',
-            options: CONT_ORDER.map(function (k) { return { label: CONT[k] }; }),
-            correct: CONT_ORDER.indexOf(x.k),
-            reveal: x.n + ' se află în ' + CONT[x.k] + '.'
-          };
-        });
-      }
-    }
+    capitale: { name: 'Capitale', blurb: 'Țara și capitala ei, în ambele sensuri.', sample: 'Polonia → ?', build: function () { return buildCapitale(zone); } },
+    judete: { name: 'Reședințe de județ', blurb: 'Cele 40 de județe ale României și orașele lor de reședință.', sample: 'Cluj → ?', build: buildJudete },
+    compara: { name: 'Mai mare, mai mic', blurb: 'Două țări. Care are suprafața sau populația mai mare?', sample: 'Suedia · Germania', build: buildCompara },
+    continente: { name: 'Continente', blurb: 'Pune fiecare țară pe continentul ei.', sample: 'Peru → ?', build: buildContinente }
   };
   var GAME_IDS = ['capitale', 'judete', 'compara', 'continente'];
+  var zone = store.get('hm-zone') === 'W' ? 'W' : 'E';
+
+  // ---------- recorduri, serie, insigne ----------
+  function bestKey(id) { return 'hm-best-' + id + (id === 'capitale' ? '-' + zone : ''); }
+  function getBest(id) { var v = parseInt(store.get(bestKey(id)), 10); return isNaN(v) ? null : v; }
+
+  var BADGES = [
+    { id: 'first', name: 'Prima rundă', desc: 'Termină o rundă' },
+    { id: 's3', name: '3 zile la rând', desc: 'Joacă 3 zile la rând' },
+    { id: 's5', name: '5 zile la rând', desc: 'Joacă 5 zile la rând' },
+    { id: 's7', name: '7 zile la rând', desc: 'Joacă 7 zile la rând' },
+    { id: 'daily', name: 'Provocarea zilei', desc: 'Termină provocarea zilei' },
+    { id: 'fix', name: 'Greșeli corectate', desc: 'Repetă greșelile fără nicio eroare' },
+    { id: 'p-capitale', name: '10 din 10 la Capitale', desc: 'Scor perfect la Capitale' },
+    { id: 'p-judete', name: '10 din 10 la Județe', desc: 'Scor perfect la Reședințe de județ' },
+    { id: 'p-compara', name: '10 din 10 la Mai mare', desc: 'Scor perfect la Mai mare, mai mic' },
+    { id: 'p-continente', name: '10 din 10 la Continente', desc: 'Scor perfect la Continente' }
+  ];
+  function earnedBadges() { return getJSON('hm-badges', []); }
+  function award(id, bag) {
+    var have = earnedBadges();
+    if (have.indexOf(id) !== -1) return;
+    have.push(id); setJSON('hm-badges', have);
+    for (var i = 0; i < BADGES.length; i++) if (BADGES[i].id === id) bag.push(BADGES[i].name);
+  }
+  function currentStreak() {
+    var st = getJSON('hm-streak', { last: '', n: 0 });
+    var t = todayStr();
+    return (st.last === t || st.last === dayBefore(t)) ? st.n : 0;
+  }
+  function touchStreak() {
+    var st = getJSON('hm-streak', { last: '', n: 0 });
+    var t = todayStr();
+    if (st.last !== t) {
+      st.n = st.last === dayBefore(t) ? st.n + 1 : 1;
+      st.last = t; setJSON('hm-streak', st);
+    }
+    return st.n;
+  }
+  function renderStrip() {
+    var host = $('strip');
+    host.textContent = '';
+    var n = currentStreak();
+    var sk = document.createElement('span'); sk.className = 'streak';
+    sk.textContent = n > 0 ? 'Serie: ' + n + (n === 1 ? ' zi' : ' zile') : 'Joacă azi ca să începi o serie';
+    host.appendChild(sk);
+    var have = earnedBadges();
+    BADGES.forEach(function (b) {
+      var s = document.createElement('span');
+      var ok = have.indexOf(b.id) !== -1;
+      s.className = 'badge' + (ok ? '' : ' locked');
+      s.textContent = b.name; s.title = b.desc;
+      host.appendChild(s);
+    });
+  }
 
   // ---------- clasamente (Supabase) ----------
-  // Completează adresa proiectului și cheia publică (anon / publishable). Cât timp sunt goale, clasamentele rămân ascunse.
-  var CONFIG = { url: 'https://apoaelqidmsfadypvfmf.supabase.co', key: 'sb_publishable_7ce0hrSOgMHJMEiVdYomtg_KZ1kofQq' };
-  var ENABLED = !!(CONFIG.url && CONFIG.key);
-  var BOARDS = [
-    ['capitale-europa', 'Capitale · Europa'], ['capitale-lume', 'Capitale · Lume'],
-    ['judete', 'Reședințe de județ'], ['compara', 'Mai mare, mai mic'], ['continente', 'Continente']
-  ];
   function boardId(id) { return id === 'capitale' ? (zone === 'W' ? 'capitale-lume' : 'capitale-europa') : id; }
+  function boardList() {
+    return [
+      ['zilnic-' + todayStr(), 'Provocarea zilei'],
+      ['capitale-europa', 'Capitale · Europa'], ['capitale-lume', 'Capitale · Lume'],
+      ['judete', 'Reședințe de județ'], ['compara', 'Mai mare, mai mic'], ['continente', 'Continente']
+    ];
+  }
   function apiHeaders(extra) {
     var h = { apikey: CONFIG.key, 'Content-Type': 'application/json' };
     for (var k in extra) h[k] = extra[k];
     return h;
   }
+  function apiBase() { return CONFIG.url.replace(/\/$/, ''); }
   function fetchBoard(board) {
     var q = '/rest/v1/scoruri?joc=eq.' + encodeURIComponent(board) + '&select=nume,scor&order=scor.desc,creat_la.asc&limit=10';
-    return fetch(CONFIG.url.replace(/\/$/, '') + q, { headers: apiHeaders() }).then(function (r) {
+    return fetch(apiBase() + q, { headers: apiHeaders() }).then(function (r) {
       if (!r.ok) throw new Error('http ' + r.status);
       return r.json();
     });
@@ -491,9 +785,9 @@
       var li = document.createElement('li');
       var rk = document.createElement('span'); rk.className = 'rk'; rk.textContent = (i + 1) + '.';
       var nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = row.nume;
-      var sc = document.createElement('span'); sc.className = 'sc'; sc.textContent = row.scor + '/10';
+      var sc2 = document.createElement('span'); sc2.className = 'sc'; sc2.textContent = row.scor + '/10';
       if (me && !marked && row.nume === me.nume && row.scor === me.scor) { li.className = 'me'; marked = true; }
-      li.appendChild(rk); li.appendChild(nm); li.appendChild(sc);
+      li.appendChild(rk); li.appendChild(nm); li.appendChild(sc2);
       list.appendChild(li);
     });
     list.hidden = rows.length === 0;
@@ -519,7 +813,8 @@
   function openBoards() {
     var tabs = $('board-tabs');
     tabs.textContent = '';
-    BOARDS.forEach(function (b) {
+    var list = boardList();
+    list.forEach(function (b) {
       var t = document.createElement('button');
       t.type = 'button'; t.className = 'tab'; t.dataset.id = b[0]; t.textContent = b[1];
       t.setAttribute('aria-pressed', 'false');
@@ -527,62 +822,106 @@
       tabs.appendChild(t);
     });
     show('boards');
-    selectBoard(S ? S.board : boardId('capitale'));
+    selectBoard(list[0][0]);
   }
 
-  function setupSubmit() {
+  // Filtrul de nume (se repetă și în baza de date, vezi supabase-v2.sql)
+  var BAD_LONG = ['pizda', 'muie', 'cacat', 'curva', 'fututi', 'sugi', 'hitler', 'nazist'];
+  var BAD_TOKEN = ['pula', 'fut', 'cur'];
+  function plainName(n) {
+    return n.toLowerCase().replace(/[ăâ]/g, 'a').replace(/î/g, 'i').replace(/[șş]/g, 's').replace(/[țţ]/g, 't');
+  }
+  function nameError(raw) {
+    var name = raw.replace(/\s+/g, ' ').trim();
+    if (name.length < 2 || name.length > 20) return 'Scrie un nume între 2 și 20 de caractere.';
+    var p = plainName(name);
+    if (/(http|www|\.ro|\.com|@)/.test(p)) return 'Numele nu poate conține linkuri sau adrese.';
+    var letters = p.replace(/0/g, 'o').replace(/1/g, 'i').replace(/3/g, 'e').replace(/4/g, 'a')
+      .replace(/\$/g, 's').replace(/5/g, 's').replace(/[^a-z]/g, '');
+    for (var i = 0; i < BAD_LONG.length; i++) if (letters.indexOf(BAD_LONG[i]) !== -1) return 'Alege un alt nume.';
+    var tokens = p.split(/[^a-z]+/);
+    for (var j = 0; j < tokens.length; j++) if (BAD_TOKEN.indexOf(tokens[j]) !== -1) return 'Alege un alt nume.';
+    return '';
+  }
+  function sendAllowed() {
+    var now = Date.now();
+    var list = getJSON('hm-sent', []).filter(function (t) { return now - t < 600000; });
+    setJSON('hm-sent', list);
+    return list.length < 5;
+  }
+  function noteSent() {
+    var list = getJSON('hm-sent', []); list.push(Date.now()); setJSON('hm-sent', list);
+  }
+
+  function setupSubmit(canSubmit) {
     var box = $('submit-box'), list = $('end-board');
     list.hidden = true; list.textContent = '';
     $('send-msg').textContent = '';
-    if (!ENABLED || S.score < 1) { box.hidden = true; return; }
+    if (!ENABLED || !canSubmit || S.score < 1) { box.hidden = true; return; }
     box.hidden = false;
     $('player-name').value = store.get('hm-name') || '';
     $('send-score').disabled = false;
     S.sent = false;
   }
   function sendScore() {
-    if (!S || S.sent) return;
-    var name = $('player-name').value.replace(/\s+/g, ' ').trim();
+    if (!S || S.sent || !S.board) return;
+    var raw = $('player-name').value;
+    var name = raw.replace(/\s+/g, ' ').trim();
     var msg = $('send-msg');
-    if (name.length < 2 || name.length > 20) { msg.textContent = 'Scrie un nume între 2 și 20 de caractere.'; return; }
+    var err = nameError(raw);
+    if (err) { msg.textContent = err; return; }
+    if (!sendAllowed()) { msg.textContent = 'Ai trimis prea multe scoruri. Încearcă din nou peste câteva minute.'; return; }
     S.sent = true;
     $('send-score').disabled = true;
     msg.textContent = 'Se trimite…';
     store.set('hm-name', name);
     var board = S.board, score = S.score;
-    fetch(CONFIG.url.replace(/\/$/, '') + '/rest/v1/scoruri', {
+    fetch(apiBase() + '/rest/v1/scoruri', {
       method: 'POST',
       headers: apiHeaders({ Prefer: 'return=minimal' }),
       body: JSON.stringify({ joc: board, nume: name, scor: score })
     }).then(function (r) {
-      if (!r.ok) throw new Error('http ' + r.status);
+      if (!r.ok) return r.text().then(function (t) { throw new Error(t || ('http ' + r.status)); });
+      noteSent();
+      track('scor-trimis', { joc: board, scor: score });
       return fetchBoard(board);
     }).then(function (rows) {
       var found = renderRows($('end-board'), rows, { nume: name, scor: score });
       msg.textContent = found ? 'Scor trimis. Ești în top 10.' : 'Scor trimis. Încă nu ești în primii 10.';
-    }).catch(function () {
+    }).catch(function (e) {
       S.sent = false;
       $('send-score').disabled = false;
-      msg.textContent = 'Nu s-a putut trimite. Încearcă din nou.';
+      var t = String(e && e.message || '');
+      msg.textContent = t.indexOf('limita') !== -1 ? 'Prea multe trimiteri. Încearcă din nou mai târziu.'
+        : t.indexOf('nepermis') !== -1 ? 'Alege un alt nume.'
+        : 'Nu s-a putut trimite. Încearcă din nou.';
     });
   }
 
-  // ---------- stare ----------
+  // ---------- ecrane și joc ----------
   var S = null;
 
-  function bestKey(id) { return 'hm-best-' + id + (id === 'capitale' ? '-' + zone : ''); }
-  function getBest(id) { var v = parseInt(store.get(bestKey(id)), 10); return isNaN(v) ? null : v; }
-
   function show(which) {
-    $('home').hidden = which !== 'home';
-    $('play').hidden = which !== 'play';
-    $('end').hidden = which !== 'end';
-    $('boards').hidden = which !== 'boards';
+    ['home', 'play', 'end', 'boards'].forEach(function (id) { $(id).hidden = id !== which; });
   }
 
   function renderHome() {
     var host = $('tiles');
     host.textContent = '';
+
+    var daily = getJSON('hm-daily', {});
+    var today = todayStr();
+    var db = document.createElement('button');
+    db.type = 'button'; db.className = 'tile daily';
+    var dh = document.createElement('h2'); dh.textContent = 'Provocarea zilei';
+    var dp = document.createElement('p'); dp.textContent = 'Zece întrebări mixte, aceleași pentru toți jucătorii, în fiecare zi.';
+    var ds = document.createElement('p'); ds.className = 'sample'; ds.textContent = today.split('-').reverse().join('.');
+    var dr = document.createElement('p'); dr.className = 'record';
+    dr.textContent = daily.date === today ? 'Ai jucat azi: ' + daily.score + '/10' : 'Nejucată azi';
+    db.appendChild(dh); db.appendChild(dp); db.appendChild(ds); db.appendChild(dr);
+    db.addEventListener('click', startDaily);
+    host.appendChild(db);
+
     GAME_IDS.forEach(function (id) {
       var g = GAMES[id];
       var b = document.createElement('button');
@@ -594,19 +933,34 @@
       var r = document.createElement('p'); r.className = 'record';
       r.textContent = best === null ? 'Încă nejucat' : 'Record: ' + best + '/10';
       b.appendChild(h); b.appendChild(p); b.appendChild(s); b.appendChild(r);
-      b.addEventListener('click', function () { start(id); });
+      b.addEventListener('click', function () { startGame(id); });
       host.appendChild(b);
     });
+    renderStrip();
     $('show-boards').hidden = !ENABLED;
     show('home');
   }
 
-  function start(id) {
-    S = { id: id, board: boardId(id), sent: false, rounds: GAMES[id].build(), i: 0, score: 0, streak: 0, results: [], answered: false };
+  function begin(o) {
+    S = o;
+    S.i = 0; S.score = 0; S.streak = 0; S.results = []; S.wrong = []; S.answered = false; S.sent = false;
     var t = $('ticks'); t.textContent = '';
     S.rounds.forEach(function () { var d = document.createElement('span'); d.className = 'tick'; t.appendChild(d); });
+    $('st-total').textContent = S.rounds.length;
+    track('start', { joc: S.mode === 'daily' ? 'zilnic' : S.mode === 'repeat' ? 'repetare' : S.id });
     show('play');
     renderRound();
+  }
+  function startGame(id) {
+    begin({ id: id, mode: 'normal', board: boardId(id), rounds: GAMES[id].build(), label: GAMES[id].name });
+  }
+  function startDaily() {
+    var d = todayStr();
+    begin({ id: 'zilnic', mode: 'daily', board: 'zilnic-' + d, date: d, rounds: buildDaily(d), label: 'Provocarea zilei' });
+  }
+  function startRepeat() {
+    if (!S || !S.wrong.length) return;
+    begin({ id: S.id, mode: 'repeat', board: null, rounds: S.wrong.map(reshuffleRound), label: 'Repetă greșelile' });
   }
 
   function renderRound() {
@@ -638,16 +992,18 @@
       host.appendChild(b);
     });
     var fb = $('fb'); fb.textContent = ''; fb.className = 'fb-text';
+    $('fact').hidden = true; $('fact').textContent = '';
     $('next').hidden = true;
   }
 
   function choose(idx) {
-    if (!S || S.answered) return;
+    if (!S || S.answered || $('play').hidden) return;
     S.answered = true;
     var r = S.rounds[S.i];
     var ok = idx === r.correct;
     S.results[S.i] = ok;
-    if (ok) { S.score++; S.streak++; } else { S.streak = 0; }
+    if (ok) { S.score++; S.streak++; } else { S.streak = 0; S.wrong.push(r); }
+    sfx(ok ? 'ok' : 'no');
     var btns = $('opts').children;
     for (var k = 0; k < btns.length; k++) {
       btns[k].disabled = true;
@@ -659,10 +1015,10 @@
     var fb = $('fb');
     fb.className = 'fb-text ' + (ok ? 'good' : 'bad');
     fb.textContent = (ok ? '✓ Corect. ' : '✗ Greșit. ') + r.reveal;
+    if (r.fact) { $('fact').textContent = 'Știai că? ' + r.fact; $('fact').hidden = false; }
     $('st-score').textContent = S.score;
     $('st-streak').textContent = S.streak;
-    var ticks = $('ticks').children;
-    ticks[S.i].className = 'tick ' + (ok ? 'good' : 'bad');
+    $('ticks').children[S.i].className = 'tick ' + (ok ? 'good' : 'bad');
     var nx = $('next');
     nx.textContent = S.i === S.rounds.length - 1 ? 'Vezi rezultatul' : 'Următoarea';
     nx.hidden = false;
@@ -677,31 +1033,75 @@
   }
 
   function finish() {
-    var total = S.rounds.length;
-    var prev = getBest(S.id);
-    var isNew = prev === null || S.score > prev;
-    if (isNew) store.set(bestKey(S.id), String(S.score));
-    $('end-game').textContent = GAMES[S.id].name + (S.id === 'capitale' ? ' · ' + (zone === 'W' ? 'Toată lumea' : 'Europa') : '');
-    $('end-score').textContent = S.score;
-    var msg = S.score >= 9 ? 'Excelent. Harta nu mai are secrete pentru tine.'
-      : S.score >= 6 ? 'Bine. Încă o rundă și îți depășești scorul.'
+    var total = S.rounds.length, score = S.score, bag = [];
+    var canSubmit = false, rec = '';
+
+    award('first', bag);
+    var streakN = touchStreak();
+    if (streakN >= 3) award('s3', bag);
+    if (streakN >= 5) award('s5', bag);
+    if (streakN >= 7) award('s7', bag);
+
+    if (S.mode === 'normal') {
+      var prev = getBest(S.id);
+      var isNew = prev === null || score > prev;
+      if (isNew) store.set(bestKey(S.id), String(score));
+      rec = isNew ? 'Record nou: ' + score + '/' + total : 'Recordul tău: ' + prev + '/' + total;
+      canSubmit = true;
+      if (score === total) award('p-' + S.id, bag);
+    } else if (S.mode === 'daily') {
+      var dr = getJSON('hm-daily', {});
+      var firstToday = dr.date !== S.date;
+      if (firstToday) setJSON('hm-daily', { date: S.date, score: score });
+      canSubmit = firstToday;
+      rec = firstToday ? 'Scorul tău de azi: ' + score + '/' + total + '. Revino mâine pentru alte întrebări.'
+        : 'Scorul tău de azi rămâne ' + dr.score + '/' + total + '. Această rundă a fost doar antrenament.';
+      award('daily', bag);
+    } else if (S.mode === 'repeat') {
+      rec = score === total ? 'Ai corectat toate greșelile.' : 'Mai ai ' + (total - score) + ' de corectat.';
+      if (score === total) award('fix', bag);
+    }
+
+    $('end-game').textContent = S.label + (S.mode === 'normal' && S.id === 'capitale' ? ' · ' + (zone === 'W' ? 'Toată lumea' : 'Europa') : '');
+    $('end-score').textContent = score;
+    $('end-total').textContent = total;
+    $('end-msg').textContent = score === total ? 'Perfect. Harta nu mai are secrete pentru tine.'
+      : score >= total * 0.6 ? 'Bine. Încă o rundă și îți depășești scorul.'
       : 'Se învață repede. Încearcă din nou, întrebările se schimbă.';
-    $('end-msg').textContent = msg;
-    $('end-rec').textContent = isNew ? 'Record nou: ' + S.score + '/' + total : 'Recordul tău: ' + prev + '/' + total;
+    $('end-rec').textContent = rec;
+    var bb = $('end-badges');
+    bb.hidden = bag.length === 0;
+    bb.textContent = bag.length ? (bag.length === 1 ? 'Insignă nouă: ' : 'Insigne noi: ') + bag.join(', ') : '';
+
+    var wl = $('wrong-list'); wl.textContent = '';
+    S.wrong.forEach(function (r) { var li = document.createElement('li'); li.textContent = r.short; wl.appendChild(li); });
+    $('wrong-box').hidden = S.wrong.length === 0;
+    $('repeat-wrong').hidden = S.wrong.length === 0;
+    $('again').hidden = S.mode === 'repeat';
+    $('again').textContent = S.mode === 'daily' ? 'Rejoacă pentru antrenament' : 'Încă o rundă';
+
+    track('final', { joc: S.mode === 'daily' ? 'zilnic' : S.mode === 'repeat' ? 'repetare' : S.id, scor: score });
+    sfx(score >= total * 0.6 ? 'win' : 'no');
     show('end');
-    setupSubmit();
-    $('again').focus();
+    setupSubmit(canSubmit);
+    var focusEl = $('again').hidden ? $('home-btn') : $('again');
+    focusEl.focus();
   }
 
   // ---------- evenimente ----------
   $('next').addEventListener('click', next);
   $('back').addEventListener('click', renderHome);
   $('home-btn').addEventListener('click', renderHome);
+  $('again').addEventListener('click', function () { if (S.mode === 'daily') startDaily(); else startGame(S.id); });
+  $('repeat-wrong').addEventListener('click', startRepeat);
   $('show-boards').addEventListener('click', openBoards);
   $('boards-back').addEventListener('click', renderHome);
   $('send-score').addEventListener('click', sendScore);
   $('player-name').addEventListener('keydown', function (e) { if (e.key === 'Enter') sendScore(); });
-  $('again').addEventListener('click', function () { start(S.id); });
+  $('snd').addEventListener('click', function () {
+    muted = !muted; store.set('hm-muted', muted ? '1' : '0'); renderSound();
+    if (!muted) sfx('ok');
+  });
   document.addEventListener('keydown', function (e) {
     if ($('play').hidden || e.ctrlKey || e.metaKey || e.altKey) return;
     var n = parseInt(e.key, 10);
@@ -714,6 +1114,7 @@
     });
   });
 
+  renderSound();
   renderHome();
 })();
 </script>
