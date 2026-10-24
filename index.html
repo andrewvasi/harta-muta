@@ -323,11 +323,6 @@
       </div>
     </div>
 
-    <div class="zone">
-      <span class="zone-label">Continent pentru „Găsește pe hartă”</span>
-      <div class="board-tabs" id="mapzone"></div>
-    </div>
-
     <div class="tiles" id="tiles"></div>
     <div><button class="btn ghost" id="show-boards" type="button" hidden>Vezi clasamentele</button></div>
     <p class="note">Suprafețele și populațiile sunt valori aproximative, rotunjite. Hărțile sunt simplificate și folosesc datele Natural Earth (domeniu public).</p>
@@ -365,6 +360,14 @@
       <button class="btn" id="next" type="button" hidden>Următoarea</button>
     </div>
     <p class="fact" id="fact" hidden></p>
+  </section>
+
+  <!-- ECRAN: alegerea continentului pentru „Găsește pe hartă” -->
+  <section id="cont" class="play" hidden>
+    <div class="bar"><button class="link" id="cont-back" type="button">← Toate jocurile</button></div>
+    <h2 class="prompt" style="font-size: clamp(1.8rem, 5vw, 2.6rem)">Găsește pe hartă</h2>
+    <p class="ask">Alege continentul pe care vrei să joci.</p>
+    <div class="tiles" id="cont-tiles"></div>
   </section>
 
   <!-- ECRAN: clasamente -->
@@ -1383,7 +1386,7 @@
     steaguri: { name: 'Steaguri', blurb: 'Al cui este steagul? Fiecare steag apare o singură dată, până le vezi pe toate.', sample: '🏳 → ?', build: buildSteaguri },
     vecini: { name: 'Vecinii', blurb: 'Cine are frontieră terestră cu cine? Găsește vecinul sau intrusul.', sample: 'Elveția · Polonia?', build: buildVecini },
     romania: { name: 'Cunoaște România', blurb: 'Munți, râuri, orașe și locuri celebre din România.', sample: 'Moldoveanu → ?', build: buildRomania },
-    harta: { name: 'Găsește pe hartă', sub: function () { return CONT[mapCont]; }, blurb: 'Atinge țara pe hartă sau recunoaște-o după formă. Alegi continentul.', sample: 'Unde este Peru?', build: buildHarta },
+    harta: { name: 'Găsește pe hartă', sub: function () { return CONT[mapCont]; }, blurb: 'Atinge țara pe hartă sau recunoaște-o după formă. Alegi continentul când intri.', sample: 'Unde este Peru?', build: buildHarta },
     'harta-judete': { name: 'Județele pe hartă', blurb: 'Cele 40 de județe, direct pe harta României.', sample: 'Unde este Dolj?', build: buildHartaJudete }
   };
   var GAME_IDS = ['capitale', 'judete', 'compara', 'continente', 'steaguri', 'vecini', 'romania', 'harta', 'harta-judete'];
@@ -1594,23 +1597,30 @@
     });
   }
 
-  function renderMapZone() {
-    var host = $('mapzone');
-    host.textContent = '';
-    CONT_ORDER.forEach(function (k) {
-      var b = document.createElement('button');
-      b.type = 'button'; b.className = 'tab'; b.textContent = CONT[k];
-      b.setAttribute('aria-pressed', String(k === mapCont));
-      b.addEventListener('click', function () { mapCont = k; store.set('hm-mapcont', k); renderHome(); });
-      host.appendChild(b);
-    });
-  }
-
   // ---------- ecrane și joc ----------
   var S = null;
 
+  function openCont() {
+    var host = $('cont-tiles');
+    host.textContent = '';
+    CONT_ORDER.forEach(function (k) {
+      var save = mapCont; mapCont = k;
+      var best = getBest('harta');
+      mapCont = save;
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'tile';
+      var h = document.createElement('h2'); h.textContent = CONT[k];
+      var r = document.createElement('p'); r.className = 'record';
+      r.textContent = best === null ? 'Încă nejucat' : 'Record: ' + best + '/10';
+      b.appendChild(h); b.appendChild(r);
+      b.addEventListener('click', function () { mapCont = k; store.set('hm-mapcont', k); startGame('harta'); });
+      host.appendChild(b);
+    });
+    show('cont');
+  }
+
   function show(which) {
-    ['home', 'play', 'end', 'boards'].forEach(function (id) { $(id).hidden = id !== which; });
+    ['home', 'play', 'end', 'boards', 'cont'].forEach(function (id) { $(id).hidden = id !== which; });
   }
 
   function renderHome() {
@@ -1641,11 +1651,10 @@
       var r = document.createElement('p'); r.className = 'record';
       r.textContent = best === null ? 'Încă nejucat' : 'Record: ' + best + '/10';
       b.appendChild(h); b.appendChild(p); b.appendChild(s); b.appendChild(r);
-      b.addEventListener('click', function () { startGame(id); });
+      b.addEventListener('click', function () { if (id === 'harta') openCont(); else startGame(id); });
       host.appendChild(b);
     });
     renderStrip();
-    renderMapZone();
     $('show-boards').hidden = !ENABLED;
     show('home');
     showAd('home');
@@ -1830,6 +1839,7 @@
   $('repeat-wrong').addEventListener('click', startRepeat);
   $('show-boards').addEventListener('click', openBoards);
   $('boards-back').addEventListener('click', renderHome);
+  $('cont-back').addEventListener('click', renderHome);
   $('send-score').addEventListener('click', sendScore);
   $('player-name').addEventListener('keydown', function (e) { if (e.key === 'Enter') sendScore(); });
   $('snd').addEventListener('click', function () {
