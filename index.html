@@ -93,6 +93,8 @@
 
   /* Antet */
   .brand { display: flex; align-items: center; justify-content: center; text-align: center; gap: 16px; flex-wrap: wrap; }
+  a.brand { color: inherit; text-decoration: none; cursor: pointer; }
+  a.brand:hover h1 { color: var(--accent); }
   .brand svg { width: 64px; height: 64px; flex: none; color: var(--ink); }
   .brand h1 { font-size: clamp(2.5rem, 8vw, 4.2rem); font-weight: 700; letter-spacing: -0.02em; }
   .coords { font: 500 0.8rem var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); margin-top: 6px; }
@@ -292,7 +294,7 @@
   </div>
 
   <header>
-    <div class="brand">
+    <a class="brand" id="brand" href="./" aria-label="Harta Mută, înapoi la meniu">
       <svg viewBox="0 0 64 64" role="img" aria-label="Roza vânturilor" fill="none" stroke="currentColor" stroke-width="2">
         <circle cx="32" cy="32" r="28"/>
         <circle cx="32" cy="32" r="21" stroke-dasharray="2 4"/>
@@ -304,7 +306,7 @@
         <h1>Harta Mută</h1>
         <p class="coords">Jocuri de geografie · 46° N 25° E</p>
       </div>
-    </div>
+    </a>
   </header>
 
   <!-- ECRAN: alegerea jocului -->
@@ -1840,6 +1842,10 @@
   $('show-boards').addEventListener('click', openBoards);
   $('boards-back').addEventListener('click', renderHome);
   $('cont-back').addEventListener('click', renderHome);
+  $('brand').addEventListener('click', function (e) {
+    if (e.ctrlKey || e.metaKey || e.shiftKey || e.button) return;
+    e.preventDefault(); renderHome(); window.scrollTo(0, 0);
+  });
   $('send-score').addEventListener('click', sendScore);
   $('player-name').addEventListener('keydown', function (e) { if (e.key === 'Enter') sendScore(); });
   $('snd').addEventListener('click', function () {
