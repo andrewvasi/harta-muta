@@ -261,6 +261,14 @@
   .opt.right { animation: pop 0.3s ease; }
   @media (prefers-reduced-motion: reduce) { .opt.wrong, .opt.right { animation: none; } }
 
+  /* Duel */
+  .duelbar { display: grid; gap: 6px; padding: 10px 12px; border: 1.5px dashed var(--rule-strong); border-radius: 6px; }
+  .duel-code { font: 700 clamp(2.4rem, 11vw, 3.6rem)/1 var(--f-mono); letter-spacing: 0.14em; margin: 0; }
+  .duel-players { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font: 500 0.95rem var(--f-mono); }
+  .duel-players li { border-left: 3px solid var(--accent); padding: 0.2rem 0 0.2rem 0.7rem; overflow-wrap: anywhere; }
+  .duel-end { display: grid; gap: 12px; width: 100%; }
+  .submit select { padding: 0.7rem 0.8rem; border: 1.5px solid var(--ink); border-radius: 6px; background: var(--paper); color: var(--ink); font: inherit; }
+  .submit .row input[readonly] { font: 500 0.85rem var(--f-mono); }
   /* Hărți */
   .prompt.long { font-size: clamp(1.5rem, 4.6vw, 2.2rem); line-height: 1.15; }
   .flag { display: block; width: min(100%, 360px); height: auto; aspect-ratio: 4 / 3; object-fit: contain; border: 1.5px solid var(--ink); border-radius: 6px; background: var(--paper); }
@@ -311,7 +319,7 @@
 
   <!-- ECRAN: alegerea jocului -->
   <main id="home" class="wrap" style="gap:22px">
-    <p class="lead">Zece moduri de joc, <strong>zece întrebări</strong> fiecare. Gratuit și fără cont. Alege unul și vezi cât de bine știi harta.</p>
+    <p class="lead">Unsprezece moduri de joc, <strong>zece întrebări</strong> fiecare. Gratuit și fără cont. Alege unul și vezi cât de bine știi harta.</p>
 
     <div class="strip" id="strip" aria-label="Seria și insignele tale"></div>
 
@@ -342,6 +350,10 @@
       </div>
     </div>
     <div class="ticks" id="ticks" aria-hidden="true"></div>
+    <div class="duelbar" id="duelbar" hidden>
+      <div class="stats"><span>Adversar: <b id="duel-opp-name"></b></span><span id="duel-opp-score"></span></div>
+      <div class="ticks" id="duel-opp-ticks" aria-hidden="true"></div>
+    </div>
     <div class="q">
       <p class="kicker" id="kicker"></p>
       <h2 class="prompt" id="prompt"></h2>
@@ -372,6 +384,40 @@
     <div class="tiles" id="cont-tiles"></div>
   </section>
 
+  <!-- ECRAN: duel 1 la 1 -->
+  <section id="duel" class="play" hidden>
+    <div class="bar"><button class="link" id="duel-back" type="button">← Toate jocurile</button></div>
+    <h2 class="prompt" style="font-size: clamp(1.8rem, 5vw, 2.6rem)">Duel 1 la 1</h2>
+    <div id="duel-lobby" class="submit">
+      <p class="ask">Aceleași 10 întrebări pentru amândoi, în același timp. Câștigă cine are mai multe corecte, iar la egalitate cine e mai rapid.</p>
+      <label for="duel-name">Numele tău</label>
+      <input id="duel-name" maxlength="20" autocomplete="nickname" placeholder="ex. Alex">
+      <div class="row"><button class="btn" id="duel-create" type="button">Creează o cameră</button></div>
+      <label for="duel-code-in">Sau intră cu un cod</label>
+      <div class="row">
+        <input id="duel-code-in" maxlength="6" autocapitalize="characters" autocomplete="off" placeholder="ex. K7M2Q">
+        <button class="btn ghost" id="duel-join" type="button">Intră</button>
+      </div>
+      <p class="board-msg" id="duel-msg" role="status"></p>
+    </div>
+    <div id="duel-room" class="submit" hidden>
+      <label>Codul camerei</label>
+      <p class="duel-code" id="duel-code"></p>
+      <div class="row">
+        <input id="duel-link" readonly aria-label="Link de invitație">
+        <button class="btn ghost" id="duel-copy" type="button">Copiază</button>
+        <button class="btn ghost" id="duel-share" type="button" hidden>Trimite</button>
+      </div>
+      <ul class="duel-players" id="duel-players"></ul>
+      <div id="duel-host-ctl" class="submit" style="max-width:none">
+        <label for="duel-game">Jocul</label>
+        <select id="duel-game"></select>
+        <div class="row"><button class="btn" id="duel-start" type="button" disabled>Începe</button></div>
+      </div>
+      <p class="board-msg" id="duel-status" role="status"></p>
+    </div>
+  </section>
+
   <!-- ECRAN: clasamente -->
   <section id="boards" class="play" hidden>
     <div class="bar"><button class="link" id="boards-back" type="button">← Toate jocurile</button></div>
@@ -392,6 +438,12 @@
     <div class="wrong-box" id="wrong-box" hidden>
       <h3>Greșelile tale</h3>
       <ul class="wrong-list" id="wrong-list"></ul>
+    </div>
+
+    <div class="duel-end" id="duel-end" hidden>
+      <p class="msg" id="duel-verdict" role="status"></p>
+      <ol class="board" id="duel-table"></ol>
+      <div class="actions"><button class="btn" id="duel-rematch" type="button">Revanșă</button></div>
     </div>
 
     <div class="submit" id="submit-box" hidden>
@@ -1079,8 +1131,9 @@
     return [];
   }
   // Steagurile văzute se rețin în browser: nu se repetă până nu le-ai văzut pe toate.
+  var noMemory = false;
   function buildSteaguri() {
-    var seen = getJSON('hm-flags-seen', []);
+    var seen = noMemory ? [] : getJSON('hm-flags-seen', []);
     var fresh = shuffle(COUNTRIES.filter(function (x) { return seen.indexOf(x.cca) === -1; }));
     var picked = fresh.slice(0, ROUNDS);
     if (picked.length < ROUNDS) {
@@ -1091,7 +1144,7 @@
     } else {
       seen = seen.concat(picked.map(function (x) { return x.cca; }));
     }
-    setJSON('hm-flags-seen', seen);
+    if (!noMemory) setJSON('hm-flags-seen', seen);
     return picked.map(function (x) {
       var bad = lookalikeOf(x.cca);
       var ok = function (y) { return y !== x && bad.indexOf(y.cca) === -1 && lookalikeOf(y.cca).indexOf(x.cca) === -1; };
@@ -1622,10 +1675,11 @@
   }
 
   function show(which) {
-    ['home', 'play', 'end', 'boards', 'cont'].forEach(function (id) { $(id).hidden = id !== which; });
+    ['home', 'play', 'end', 'boards', 'cont', 'duel'].forEach(function (id) { $(id).hidden = id !== which; });
   }
 
   function renderHome() {
+    duelLeave();
     var host = $('tiles');
     host.textContent = '';
 
@@ -1641,6 +1695,15 @@
     db.appendChild(dh); db.appendChild(dp); db.appendChild(ds); db.appendChild(dr);
     db.addEventListener('click', startDaily);
     host.appendChild(db);
+
+    var du = document.createElement('button');
+    du.type = 'button'; du.className = 'tile daily';
+    var uh = document.createElement('h2'); uh.textContent = 'Duel 1 la 1';
+    var up = document.createElement('p'); up.textContent = 'Joci în timp real cu un prieten: aceleași 10 întrebări, vezi cum răspunde el în direct.';
+    var us = document.createElement('p'); us.className = 'record'; us.textContent = 'Nou · trimiți un link și începeți';
+    du.appendChild(uh); du.appendChild(up); du.appendChild(us);
+    du.addEventListener('click', function () { duelOpen(''); });
+    host.appendChild(du);
 
     GAME_IDS.forEach(function (id) {
       var g = GAMES[id];
@@ -1665,10 +1728,12 @@
   function begin(o) {
     S = o;
     S.i = 0; S.score = 0; S.streak = 0; S.results = []; S.wrong = []; S.answered = false; S.sent = false;
+    S.t0 = Date.now(); S.finishMs = 0; S.sfxDone = false;
+    renderOppBar();
     var t = $('ticks'); t.textContent = '';
     S.rounds.forEach(function () { var d = document.createElement('span'); d.className = 'tick'; t.appendChild(d); });
     $('st-total').textContent = S.rounds.length;
-    track('start', { joc: S.mode === 'daily' ? 'zilnic' : S.mode === 'repeat' ? 'repetare' : S.id });
+    track('start', { joc: S.mode === 'daily' ? 'zilnic' : S.mode === 'repeat' ? 'repetare' : S.mode === 'duel' ? 'duel' : S.id });
     show('play');
     var need = null;
     o.rounds.forEach(function (r) { if (r.map) need = r.map.src; });
@@ -1706,6 +1771,7 @@
     for (var k = 0; k < ticks.length; k++) {
       ticks[k].className = 'tick' + (S.results[k] === true ? ' good' : S.results[k] === false ? ' bad' : k === S.i ? ' now' : '');
     }
+    if (S.i === 0) S.t0 = Date.now();
     $('kicker').textContent = r.kicker;
     $('prompt').textContent = r.prompt;
     $('prompt').classList.toggle('long', r.prompt.length > 26);
@@ -1750,6 +1816,7 @@
     nx.textContent = S.i === S.rounds.length - 1 ? 'Vezi rezultatul' : 'Următoarea';
     nx.hidden = false;
     nx.focus();
+    if (S.mode === 'duel') duelProgress(false);
   }
 
   function choose(idx) {
@@ -1801,6 +1868,9 @@
       rec = firstToday ? 'Scorul tău de azi: ' + score + '/' + total + '. Revino mâine pentru alte întrebări.'
         : 'Scorul tău de azi rămâne ' + dr.score + '/' + total + '. Această rundă a fost doar antrenament.';
       award('daily', bag);
+    } else if (S.mode === 'duel') {
+      S.finishMs = Date.now() - S.t0;
+      rec = '';
     } else if (S.mode === 'repeat') {
       rec = score === total ? 'Ai corectat toate greșelile.' : 'Mai ai ' + (total - score) + ' de corectat.';
       if (score === total) award('fix', bag);
@@ -1824,13 +1894,239 @@
     $('again').hidden = S.mode === 'repeat';
     $('again').textContent = S.mode === 'daily' ? 'Rejoacă pentru antrenament' : 'Încă o rundă';
 
-    track('final', { joc: S.mode === 'daily' ? 'zilnic' : S.mode === 'repeat' ? 'repetare' : S.id, scor: score });
-    sfx(score >= total * 0.6 ? 'win' : 'no');
+    track('final', { joc: S.mode === 'daily' ? 'zilnic' : S.mode === 'repeat' ? 'repetare' : S.mode === 'duel' ? 'duel' : S.id, scor: score });
+    var isDuel = S.mode === 'duel' && !!D;
+    if (isDuel) { duelProgress(true); } else sfx(score >= total * 0.6 ? 'win' : 'no');
     show('end');
+    $('duel-end').hidden = true;
+    if (isDuel) { renderDuelEnd(); $('end-msg').textContent = ''; $('again').hidden = true; }
     showAd('end');
     setupSubmit(canSubmit);
-    var focusEl = $('again').hidden ? $('home-btn') : $('again');
+    var focusEl = isDuel ? $('duel-rematch') : $('again').hidden ? $('home-btn') : $('again');
     focusEl.focus();
+  }
+
+  // ---------- duel 1 la 1 (Supabase Realtime, canal „broadcast”, fără tabele) ----------
+  var SUPA_JS = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js';
+  var DUEL_GAMES = [
+    { k: 'capitale-E', id: 'capitale', zone: 'E', label: 'Capitale · Europa' },
+    { k: 'capitale-W', id: 'capitale', zone: 'W', label: 'Capitale · Toată lumea' },
+    { k: 'steaguri', id: 'steaguri', label: 'Steaguri' },
+    { k: 'vecini', id: 'vecini', label: 'Vecinii' },
+    { k: 'continente', id: 'continente', label: 'Continente' },
+    { k: 'compara', id: 'compara', label: 'Mai mare, mai mic' },
+    { k: 'romania', id: 'romania', label: 'Cunoaște România' },
+    { k: 'judete', id: 'judete', label: 'Reședințe de județ' }
+  ].concat(CONT_ORDER.map(function (k) {
+    return { k: 'harta-' + k, id: 'harta', cont: k, label: 'Găsește pe hartă · ' + CONT[k] };
+  })).concat([{ k: 'harta-judete', id: 'harta-judete', label: 'Județele pe hartă' }]);
+  var D = null, helloTimer = 0, countdownTimer = 0;
+  var CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+
+  function newCode() {
+    var s = '';
+    for (var i = 0; i < 5; i++) s += CODE_CHARS.charAt(Math.floor(Math.random() * CODE_CHARS.length));
+    return s;
+  }
+  function loadScript(src) {
+    return new Promise(function (res, rej) {
+      if (window.supabase) { res(); return; }
+      var el = document.createElement('script');
+      el.src = src; el.onload = function () { res(); }; el.onerror = function () { rej(new Error('script')); };
+      document.head.appendChild(el);
+    });
+  }
+  function openNet(code, onmsg) {
+    if (window.__HM_NET) return Promise.resolve(window.__HM_NET(code, onmsg)); // doar pentru teste
+    return loadScript(SUPA_JS).then(function () {
+      return new Promise(function (resolve, reject) {
+        var client = window.supabase.createClient(CONFIG.url, CONFIG.key);
+        var ch = client.channel('duel-' + code, { config: { broadcast: { self: false } } });
+        ['hello', 'start', 'prog', 'rematch', 'leave'].forEach(function (ev) {
+          ch.on('broadcast', { event: ev }, function (m) { onmsg(ev, m && m.payload); });
+        });
+        var done = false;
+        var timer = setTimeout(function () { if (!done) { done = true; reject(new Error('timeout')); } }, 10000);
+        ch.subscribe(function (status) {
+          if (done) return;
+          if (status === 'SUBSCRIBED') {
+            done = true; clearTimeout(timer);
+            resolve({
+              send: function (ev, payload) { ch.send({ type: 'broadcast', event: ev, payload: payload }); },
+              close: function () { try { client.removeChannel(ch); } catch (e) {} }
+            });
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+            done = true; clearTimeout(timer); reject(new Error(status));
+          }
+        });
+      });
+    });
+  }
+  function duelSend(ev, payload) { try { if (D && D.net) D.net.send(ev, payload); } catch (e) {} }
+
+  function duelOpen(code) {
+    show('duel');
+    $('duel-lobby').hidden = false; $('duel-room').hidden = true;
+    $('duel-name').value = store.get('hm-name') || '';
+    $('duel-code-in').value = code || '';
+    $('duel-msg').textContent = '';
+    ($('duel-name').value && code ? $('duel-join') : $('duel-name')).focus();
+  }
+  function duelNameOk() {
+    var raw = $('duel-name').value, err = nameError(raw);
+    if (err) { $('duel-msg').textContent = err; return null; }
+    var name = raw.replace(/\s+/g, ' ').trim();
+    store.set('hm-name', name);
+    return name;
+  }
+  function duelJoin(code, host) {
+    var name = duelNameOk(); if (!name) return;
+    $('duel-msg').textContent = 'Se conectează…';
+    $('duel-create').disabled = true; $('duel-join').disabled = true;
+    var tmp = { code: code, host: host, name: name, id: Math.random().toString(36).slice(2, 10), opp: null, entry: null, net: null, started: false };
+    openNet(code, duelMsg).then(function (net) {
+      duelLeave(true);
+      D = tmp; D.net = net;
+      track('duel-camera', { rol: host ? 'gazda' : 'invitat' });
+      if (!host) {
+        var hello = function () { duelSend('hello', { id: D.id, name: D.name, role: 'guest' }); };
+        hello(); helloTimer = setInterval(function () { if (D && !D.opp) hello(); else clearInterval(helloTimer); }, 2500);
+      }
+      renderRoom();
+    }).catch(function () {
+      $('duel-msg').textContent = 'Nu m-am putut conecta. Verifică internetul și încearcă din nou.';
+    }).then(function () { $('duel-create').disabled = false; $('duel-join').disabled = false; });
+  }
+  function duelLeave(silent) {
+    clearInterval(helloTimer); clearTimeout(countdownTimer);
+    if (D) {
+      if (!silent) duelSend('leave', { id: D.id });
+      try { D.net && D.net.close(); } catch (e) {}
+    }
+    D = null;
+    $('duelbar').hidden = true;
+  }
+
+  function duelMsg(type, p) {
+    if (!D || !p) return;
+    if (type === 'hello') {
+      if (p.id === D.id || (D.opp && D.opp.id !== p.id)) return;
+      if (D.host && p.role !== 'guest') return;
+      if (!D.host && p.role !== 'host') return;
+      D.opp = D.opp || { id: p.id, results: [], score: 0, done: false, ms: 0 };
+      D.opp.name = String(p.name || 'Adversar').slice(0, 20);
+      if (D.host) duelSend('hello', { id: D.id, name: D.name, role: 'host' });
+      renderRoom();
+    } else if (type === 'start') {
+      if (D.host || !D.opp || p.id !== D.opp.id) return;
+      runStart(p);
+    } else if (type === 'prog') {
+      if (!D.opp || p.id !== D.opp.id) return;
+      D.opp.results = (p.results || []).slice(0, 10).map(Boolean);
+      D.opp.score = Math.max(0, Math.min(10, p.score | 0));
+      D.opp.done = !!p.done; D.opp.ms = Math.max(0, p.ms | 0);
+      renderOppBar();
+      if (!$('end').hidden) renderDuelEnd();
+    } else if (type === 'rematch') {
+      if (D.host && D.opp && p.id === D.opp.id && D.entry) duelStart(D.entry);
+    } else if (type === 'leave') {
+      if (D.opp && p.id === D.opp.id) {
+        D.opp.left = true;
+        if (!$('duel').hidden) renderRoom();
+        if (!$('end').hidden) renderDuelEnd();
+      }
+    }
+  }
+
+  function renderRoom() {
+    if (!D) return;
+    show('duel');
+    $('duel-lobby').hidden = true; $('duel-room').hidden = false;
+    $('duel-code').textContent = D.code;
+    var link = location.origin + location.pathname + '?duel=' + D.code;
+    $('duel-link').value = link;
+    $('duel-share').hidden = !(navigator.share);
+    var pl = $('duel-players'); pl.textContent = '';
+    var me = document.createElement('li'); me.textContent = 'Tu: ' + D.name + (D.host ? ' (gazdă)' : ''); pl.appendChild(me);
+    var op = document.createElement('li');
+    op.textContent = D.opp ? (D.opp.left ? D.opp.name + ' a ieșit' : 'Adversar: ' + D.opp.name + (D.host ? '' : ' (gazdă)')) : 'Se așteaptă adversarul…';
+    pl.appendChild(op);
+    $('duel-host-ctl').hidden = !D.host;
+    $('duel-start').disabled = !(D.opp && !D.opp.left);
+    $('duel-status').textContent = D.countdown ? D.countdown
+      : D.host ? (D.opp && !D.opp.left ? 'Alege jocul și apasă „Începe”.' : 'Trimite linkul prietenului tău. Camera rămâne deschisă cât ții pagina.')
+      : (D.opp ? 'Ești în cameră. Așteaptă ca gazda să înceapă.' : 'Se caută gazda…');
+  }
+  function duelRounds(entry, seed) {
+    var sz = zone, sm = mapCont, sr = rng, snm = noMemory;
+    try {
+      if (entry.zone) zone = entry.zone;
+      if (entry.cont) mapCont = entry.cont;
+      noMemory = true; rng = mulberry32(seed);
+      return GAMES[entry.id].build();
+    } finally { zone = sz; mapCont = sm; rng = sr; noMemory = snm; }
+  }
+  function duelStart(entry) {
+    var p = { id: D.id, k: entry.k, seed: (Math.random() * 4294967296) >>> 0 };
+    duelSend('start', p);
+    runStart(p);
+  }
+  function runStart(p) {
+    var entry = null;
+    DUEL_GAMES.forEach(function (g) { if (g.k === p.k) entry = g; });
+    if (!entry || !D || D.countdown) return;
+    D.entry = entry;
+    var rounds = duelRounds(entry, p.seed);
+    D.opp.results = []; D.opp.score = 0; D.opp.done = false; D.opp.ms = 0;
+    var o = { id: entry.id, mode: 'duel', board: null, rounds: rounds, label: 'Duel · ' + entry.label };
+    var n = 3;
+    var tick = function () {
+      if (!D) return;
+      if (n === 0) { D.countdown = ''; track('duel-start', { joc: entry.k }); begin(o); return; }
+      D.countdown = entry.label + ' · începe în ' + n + '…';
+      renderRoom(); n--;
+      countdownTimer = setTimeout(tick, 1000);
+    };
+    tick();
+  }
+  function duelProgress(done) {
+    if (!D || !S) return;
+    duelSend('prog', { id: D.id, results: S.results.map(Boolean), score: S.score, done: done, ms: done ? S.finishMs : 0 });
+  }
+  function renderOppBar() {
+    var bar = $('duelbar');
+    if (!D || !D.opp || !S || S.mode !== 'duel') { bar.hidden = true; return; }
+    bar.hidden = false;
+    $('duel-opp-name').textContent = D.opp.name + (D.opp.left ? ' (a ieșit)' : '');
+    $('duel-opp-score').textContent = D.opp.score + ' corecte';
+    var t = $('duel-opp-ticks'); t.textContent = '';
+    for (var i = 0; i < S.rounds.length; i++) {
+      var d = document.createElement('span');
+      d.className = 'tick' + (i < D.opp.results.length ? (D.opp.results[i] ? ' good' : ' bad') : '');
+      t.appendChild(d);
+    }
+  }
+  function secs(ms) { return (ms / 1000).toLocaleString('ro-RO', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' s'; }
+  function renderDuelEnd() {
+    var box = $('duel-end');
+    box.hidden = !(S && S.mode === 'duel' && D && D.opp);
+    if (box.hidden) return;
+    var o = D.opp, total = S.rounds.length, v;
+    var list = $('duel-table'); list.textContent = '';
+    [[D.name + ' (tu)', S.score, S.finishMs, true], [o.name, o.score, o.ms, o.done]].forEach(function (r, i) {
+      var li = document.createElement('li');
+      var rk = document.createElement('span'); rk.className = 'rk'; rk.textContent = i === 0 ? 'Tu' : 'El';
+      var nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = r[0];
+      var sc2 = document.createElement('span'); sc2.className = 'sc'; sc2.textContent = r[1] + '/' + total + (r[3] ? ' · ' + secs(r[2]) : ' · încă joacă');
+      li.appendChild(rk); li.appendChild(nm); li.appendChild(sc2); list.appendChild(li);
+    });
+    if (!o.done) v = o.left ? o.name + ' a ieșit din cameră înainte să termine.' : 'Aștept ca ' + o.name + ' să termine…';
+    else if (S.score !== o.score) v = S.score > o.score ? 'Ai câștigat!' : o.name + ' a câștigat.';
+    else if (S.finishMs !== o.ms) v = S.finishMs < o.ms ? 'Egalitate la scor, dar ai câștigat la timp!' : 'Egalitate la scor, dar ' + o.name + ' a fost mai rapid.';
+    else v = 'Egalitate perfectă.';
+    $('duel-verdict').textContent = v;
+    $('duel-rematch').disabled = !!o.left;
+    if (o.done && !S.sfxDone) { S.sfxDone = true; sfx(S.score >= o.score ? 'win' : 'no'); }
   }
 
   // ---------- evenimente ----------
@@ -1864,9 +2160,41 @@
     });
   });
 
+  $('duel-back').addEventListener('click', renderHome);
+  $('duel-create').addEventListener('click', function () { duelJoin(newCode(), true); });
+  $('duel-join').addEventListener('click', function () {
+    var c = $('duel-code-in').value.trim().toUpperCase();
+    if (!/^[A-Z0-9]{4,6}$/.test(c)) { $('duel-msg').textContent = 'Scrie codul camerei (5 caractere).'; return; }
+    duelJoin(c, false);
+  });
+  $('duel-start').addEventListener('click', function () {
+    var k = $('duel-game').value, entry = null;
+    DUEL_GAMES.forEach(function (g) { if (g.k === k) entry = g; });
+    if (D && D.host && D.opp && entry) duelStart(entry);
+  });
+  $('duel-copy').addEventListener('click', function () {
+    var el = $('duel-link'), done = function () { $('duel-status').textContent = 'Linkul a fost copiat.'; };
+    el.select();
+    try { if (navigator.clipboard) navigator.clipboard.writeText(el.value).then(done, function () {}); else document.execCommand('copy'), done(); } catch (e) {}
+  });
+  $('duel-share').addEventListener('click', function () {
+    try { navigator.share({ title: 'Harta Mută', text: 'Hai la un duel de geografie!', url: $('duel-link').value }); } catch (e) {}
+  });
+  $('duel-rematch').addEventListener('click', function () {
+    if (!D || !D.opp || D.opp.left) return;
+    if (D.host) duelStart(D.entry); else { duelSend('rematch', { id: D.id }); $('duel-verdict').textContent = 'Am cerut revanșa. Așteaptă gazda…'; }
+  });
+  window.addEventListener('pagehide', function () { if (D) duelSend('leave', { id: D.id }); });
+  DUEL_GAMES.forEach(function (g) {
+    var o = document.createElement('option'); o.value = g.k; o.textContent = g.label; $('duel-game').appendChild(o);
+  });
   setupMapInput();
   renderSound();
   renderHome();
+  (function () {
+    var q = /[?&]duel=([A-Za-z0-9]{4,6})/.exec(location.search);
+    if (q) { try { history.replaceState(null, '', location.pathname); } catch (e) {} duelOpen(q[1].toUpperCase()); }
+  })();
 })();
 </script>
 
