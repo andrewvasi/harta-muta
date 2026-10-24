@@ -261,6 +261,7 @@
 
   /* Hărți */
   .prompt.long { font-size: clamp(1.5rem, 4.6vw, 2.2rem); line-height: 1.15; }
+  .flag { display: block; width: min(100%, 360px); height: auto; aspect-ratio: 4 / 3; object-fit: contain; border: 1.5px solid var(--ink); border-radius: 6px; background: var(--paper); }
   .mapbox { position: relative; border: 1.5px solid var(--ink); border-radius: 8px; background: var(--sea); overflow: hidden; }
   .mapbox svg { display: block; width: 100%; height: auto; max-height: 72vh; touch-action: pan-y; cursor: grab; user-select: none; -webkit-user-select: none; }
   .mapbox svg.zoomed { touch-action: none; }
@@ -308,7 +309,7 @@
 
   <!-- ECRAN: alegerea jocului -->
   <main id="home" class="wrap" style="gap:22px">
-    <p class="lead">Nouă moduri de joc, <strong>zece întrebări</strong> fiecare. Gratuit și fără cont. Alege unul și vezi cât de bine știi harta.</p>
+    <p class="lead">Zece moduri de joc, <strong>zece întrebări</strong> fiecare. Gratuit și fără cont. Alege unul și vezi cât de bine știi harta.</p>
 
     <div class="strip" id="strip" aria-label="Seria și insignele tale"></div>
 
@@ -349,6 +350,7 @@
       <h2 class="prompt" id="prompt"></h2>
       <p class="ask" id="ask"></p>
     </div>
+    <img class="flag" id="flag" alt="Steagul de ghicit" hidden>
     <div class="mapbox" id="mapbox" hidden>
       <svg id="map" role="img" aria-label="Harta" viewBox="0 0 1000 520" preserveAspectRatio="xMidYMid meet"></svg>
       <div class="mtools">
@@ -1064,6 +1066,46 @@
     });
   }
 
+  // ---------- steaguri ----------
+  // Țări cu steaguri foarte asemănătoare nu apar niciodată în aceeași întrebare.
+  var LOOKALIKE = [['IDN', 'MCO', 'POL'], ['ROU', 'TCD', 'AND'], ['IRL', 'CIV'], ['MLI', 'GIN'], ['SVK', 'SVN', 'RUS']];
+  function lookalikeOf(c) {
+    for (var i = 0; i < LOOKALIKE.length; i++) if (LOOKALIKE[i].indexOf(c) !== -1) return LOOKALIKE[i];
+    return [];
+  }
+  // Steagurile văzute se rețin în browser: nu se repetă până nu le-ai văzut pe toate.
+  function buildSteaguri() {
+    var seen = getJSON('hm-flags-seen', []);
+    var fresh = shuffle(COUNTRIES.filter(function (x) { return seen.indexOf(x.cca) === -1; }));
+    var picked = fresh.slice(0, ROUNDS);
+    if (picked.length < ROUNDS) {
+      var ids = picked.map(function (x) { return x.cca; });
+      var rest = shuffle(COUNTRIES.filter(function (x) { return ids.indexOf(x.cca) === -1; }));
+      picked = picked.concat(rest.slice(0, ROUNDS - picked.length));
+      seen = picked.map(function (x) { return x.cca; }); // începe un nou ciclu
+    } else {
+      seen = seen.concat(picked.map(function (x) { return x.cca; }));
+    }
+    setJSON('hm-flags-seen', seen);
+    return picked.map(function (x) {
+      var bad = lookalikeOf(x.cca);
+      var ok = function (y) { return y !== x && bad.indexOf(y.cca) === -1 && lookalikeOf(y.cca).indexOf(x.cca) === -1; };
+      var near = shuffle(COUNTRIES.filter(function (y) { return ok(y) && y.k === x.k; }));
+      var far = shuffle(COUNTRIES.filter(function (y) { return ok(y) && y.k !== x.k; }));
+      var picks = [], banned = [];
+      near.concat(far).forEach(function (y) {
+        if (picks.length >= 3 || banned.indexOf(y.cca) !== -1) return;
+        picks.push(y); banned = banned.concat(lookalikeOf(y.cca));
+      });
+      var opts = shuffle([x].concat(picks));
+      return {
+        kicker: 'Steagul', prompt: 'Al cui este steagul?', ask: '', img: 'steaguri/' + x.cca.toLowerCase() + '.svg',
+        options: opts.map(function (o) { return { label: o.n }; }), correct: opts.indexOf(x),
+        reveal: 'Acesta este steagul: ' + x.n + '.', short: 'Steagul → ' + x.n, fact: FACTS_C[x.n]
+      };
+    });
+  }
+
   // ---------- jocuri pe hartă ----------
   var CONT_SLUG = { E: 'europa', A: 'asia', F: 'africa', N: 'america-nord', S: 'america-sud', O: 'oceania' };
   var mapCont = CONT[store.get('hm-mapcont')] ? store.get('hm-mapcont') : 'E';
@@ -1338,12 +1380,13 @@
     judete: { name: 'Reședințe de județ', blurb: 'Cele 40 de județe ale României și orașele lor de reședință.', sample: 'Cluj → ?', build: buildJudete },
     compara: { name: 'Mai mare, mai mic', blurb: 'Două țări. Care are suprafața sau populația mai mare?', sample: 'Suedia · Germania', build: buildCompara },
     continente: { name: 'Continente', blurb: 'Pune fiecare țară pe continentul ei.', sample: 'Peru → ?', build: buildContinente },
+    steaguri: { name: 'Steaguri', blurb: 'Al cui este steagul? Fiecare steag apare o singură dată, până le vezi pe toate.', sample: '🏳 → ?', build: buildSteaguri },
     vecini: { name: 'Vecinii', blurb: 'Cine are frontieră terestră cu cine? Găsește vecinul sau intrusul.', sample: 'Elveția · Polonia?', build: buildVecini },
     romania: { name: 'Cunoaște România', blurb: 'Munți, râuri, orașe și locuri celebre din România.', sample: 'Moldoveanu → ?', build: buildRomania },
     harta: { name: 'Găsește pe hartă', sub: function () { return CONT[mapCont]; }, blurb: 'Atinge țara pe hartă sau recunoaște-o după formă. Alegi continentul.', sample: 'Unde este Peru?', build: buildHarta },
     'harta-judete': { name: 'Județele pe hartă', blurb: 'Cele 40 de județe, direct pe harta României.', sample: 'Unde este Dolj?', build: buildHartaJudete }
   };
-  var GAME_IDS = ['capitale', 'judete', 'compara', 'continente', 'vecini', 'romania', 'harta', 'harta-judete'];
+  var GAME_IDS = ['capitale', 'judete', 'compara', 'continente', 'steaguri', 'vecini', 'romania', 'harta', 'harta-judete'];
   var zone = store.get('hm-zone') === 'W' ? 'W' : 'E';
 
   // ---------- recorduri, serie, insigne ----------
@@ -1361,6 +1404,7 @@
     { id: 'p-judete', name: '10 din 10 la Județe', desc: 'Scor perfect la Reședințe de județ' },
     { id: 'p-compara', name: '10 din 10 la Mai mare', desc: 'Scor perfect la Mai mare, mai mic' },
     { id: 'p-continente', name: '10 din 10 la Continente', desc: 'Scor perfect la Continente' },
+    { id: 'p-steaguri', name: '10 din 10 la Steaguri', desc: 'Scor perfect la Steaguri' },
     { id: 'p-vecini', name: '10 din 10 la Vecinii', desc: 'Scor perfect la Vecinii' },
     { id: 'p-romania', name: '10 din 10 la România', desc: 'Scor perfect la Cunoaște România' },
     { id: 'p-harta', name: '10 din 10 pe hartă', desc: 'Scor perfect la Găsește pe hartă' },
@@ -1411,7 +1455,7 @@
       ['zilnic-' + todayStr(), 'Provocarea zilei'],
       ['capitale-europa', 'Capitale · Europa'], ['capitale-lume', 'Capitale · Lume'],
       ['judete', 'Reședințe de județ'], ['compara', 'Mai mare, mai mic'], ['continente', 'Continente'],
-      ['vecini', 'Vecinii'], ['romania', 'Cunoaște România'],
+      ['steaguri', 'Steaguri'], ['vecini', 'Vecinii'], ['romania', 'Cunoaște România'],
       ['harta-europa', 'Hartă · Europa'], ['harta-asia', 'Hartă · Asia'], ['harta-africa', 'Hartă · Africa'],
       ['harta-america-nord', 'Hartă · America de Nord'], ['harta-america-sud', 'Hartă · America de Sud'],
       ['harta-oceania', 'Hartă · Oceania'], ['harta-judete', 'Hartă · Județe']
@@ -1618,7 +1662,7 @@
     var need = null;
     o.rounds.forEach(function (r) { if (r.map) need = r.map.src; });
     if (!need) { renderRound(); return; }
-    $('mapbox').hidden = true; $('opts').hidden = true; $('next').hidden = true;
+    $('mapbox').hidden = true; $('flag').hidden = true; $('opts').hidden = true; $('next').hidden = true;
     $('kicker').textContent = ''; $('ask').hidden = true; $('fact').hidden = true; $('fb').textContent = '';
     $('prompt').textContent = 'Se încarcă harta…';
     loadMap(need).then(function () {
@@ -1657,6 +1701,7 @@
     $('ask').textContent = r.ask || '';
     $('ask').hidden = !r.ask;
     $('mapbox').hidden = !r.map;
+    var fl = $('flag'); fl.hidden = !r.img; if (r.img) fl.src = r.img;
     var host = $('opts');
     host.textContent = '';
     host.hidden = !r.options;
