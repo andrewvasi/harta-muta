@@ -261,6 +261,11 @@
   .opt.right { animation: pop 0.3s ease; }
   @media (prefers-reduced-motion: reduce) { .opt.wrong, .opt.right { animation: none; } }
 
+  /* Nivele */
+  .xp { flex: 1 1 100%; display: grid; gap: 6px; }
+  .xp-text { font: 500 0.85rem var(--f-mono); }
+  .xpbar { height: 10px; border: 1.5px solid var(--ink); border-radius: 999px; overflow: hidden; background: var(--paper); }
+  .xpbar span { display: block; height: 100%; background: var(--accent); transition: width 0.4s ease; }
   /* Duel */
   .duelbar { display: grid; gap: 6px; padding: 10px 12px; border: 1.5px dashed var(--rule-strong); border-radius: 6px; }
   .duel-code { font: 700 clamp(2.4rem, 11vw, 3.6rem)/1 var(--f-mono); letter-spacing: 0.14em; margin: 0; }
@@ -344,7 +349,8 @@
     <div class="bar">
       <button class="link" id="back" type="button">← Toate jocurile</button>
       <div class="stats">
-        <span>Întrebarea <b id="st-round">1</b>/<span id="st-total">10</span></span>
+        <span id="st-q">Întrebarea <b id="st-round">1</b>/<span id="st-total">10</span></span>
+        <span id="st-lives" hidden>Vieți <b id="st-lives-v">♥♥♥</b></span>
         <span>Scor <b id="st-score">0</b></span>
         <span>La rând <b id="st-streak">0</b></span>
       </div>
@@ -434,6 +440,7 @@
     <p class="msg" id="end-msg"></p>
     <p class="rec" id="end-rec"></p>
     <p class="newbadge" id="end-badges" hidden></p>
+    <p class="rec" id="end-xp" hidden></p>
 
     <div class="wrong-box" id="wrong-box" hidden>
       <h3>Greșelile tale</h3>
@@ -1123,6 +1130,33 @@
     });
   }
 
+  // ---------- 3 vieți: întrebări fără sfârșit, din toate jocurile fără hartă ----------
+  var viataSeen = {};
+  function viataBatch() {
+    var snm = noMemory; noMemory = true;
+    try {
+      for (var tries = 0; tries < 5; tries++) {
+        var makers = [function () { return buildCapitale('W'); }, buildSteaguri, buildVecini, buildContinente, buildCompara, buildRomania, buildJudete];
+        var pool = [];
+        shuffle(makers).slice(0, 4).forEach(function (f) { pool = pool.concat(f()); });
+        var out = shuffle(pool).filter(function (r) {
+          if (viataSeen[r.short]) return false;
+          viataSeen[r.short] = 1; return true;
+        });
+        if (out.length) return out;
+      }
+      return [];
+    } finally { noMemory = snm; }
+  }
+  function buildViata() { viataSeen = {}; return viataBatch(); }
+  function renderLives() {
+    var t = $('ticks').children;
+    for (var i = 0; i < t.length; i++) t[i].className = 'tick ' + (i < S.lives ? 'good' : 'bad');
+    var h = '';
+    for (var j = 0; j < 3; j++) h += j < S.lives ? '♥' : '♡';
+    $('st-lives-v').textContent = h;
+  }
+
   // ---------- steaguri ----------
   // Țări cu steaguri foarte asemănătoare nu apar niciodată în aceeași întrebare.
   var LOOKALIKE = [['IDN', 'MCO', 'POL'], ['ROU', 'TCD', 'AND'], ['IRL', 'CIV'], ['MLI', 'GIN'], ['SVK', 'SVN', 'RUS']];
@@ -1441,11 +1475,22 @@
     steaguri: { name: 'Steaguri', blurb: 'Al cui este steagul? Fiecare steag apare o singură dată, până le vezi pe toate.', sample: '🏳 → ?', build: buildSteaguri },
     vecini: { name: 'Vecinii', blurb: 'Cine are frontieră terestră cu cine? Găsește vecinul sau intrusul.', sample: 'Elveția · Polonia?', build: buildVecini },
     romania: { name: 'Cunoaște România', blurb: 'Munți, râuri, orașe și locuri celebre din România.', sample: 'Moldoveanu → ?', build: buildRomania },
+    viata: { name: '3 vieți', endless: true, blurb: 'Fără sfârșit: răspunzi până faci 3 greșeli. Câte poți nimeri la rând?', sample: '♥ ♥ ♥', build: buildViata },
     harta: { name: 'Găsește pe hartă', sub: function () { return CONT[mapCont]; }, blurb: 'Atinge țara pe hartă sau recunoaște-o după formă. Alegi continentul când intri.', sample: 'Unde este Peru?', build: buildHarta },
     'harta-judete': { name: 'Județele pe hartă', blurb: 'Cele 40 de județe, direct pe harta României.', sample: 'Unde este Dolj?', build: buildHartaJudete }
   };
-  var GAME_IDS = ['capitale', 'judete', 'compara', 'continente', 'steaguri', 'vecini', 'romania', 'harta', 'harta-judete'];
+  var GAME_IDS = ['capitale', 'judete', 'compara', 'continente', 'viata', 'steaguri', 'vecini', 'romania', 'harta', 'harta-judete'];
   var zone = store.get('hm-zone') === 'W' ? 'W' : 'E';
+
+  // ---------- puncte (XP) și niveluri ----------
+  var LEVELS = [[0, 'Turist'], [100, 'Explorator'], [250, 'Navigator'], [500, 'Cartograf'], [900, 'Geograf'], [1500, 'Profesor'], [2500, 'Maestru'], [4000, 'Legendă']];
+  function getXp() { var v = parseInt(store.get('hm-xp'), 10); return isNaN(v) || v < 0 ? 0 : v; }
+  function levelOf(xp) { var i = 0; for (var k = 0; k < LEVELS.length; k++) if (xp >= LEVELS[k][0]) i = k; return i; }
+  function addXp(n) {
+    var before = getXp(), after = before + Math.max(0, n);
+    store.set('hm-xp', String(after));
+    return { gain: n, xp: after, leveled: levelOf(after) > levelOf(before), level: levelOf(after) };
+  }
 
   // ---------- recorduri, serie, insigne ----------
   function bestKey(id) { return 'hm-best-' + id + (id === 'capitale' ? '-' + zone : id === 'harta' ? '-' + mapCont : ''); }
@@ -1463,6 +1508,7 @@
     { id: 'p-compara', name: '10 din 10 la Mai mare', desc: 'Scor perfect la Mai mare, mai mic' },
     { id: 'p-continente', name: '10 din 10 la Continente', desc: 'Scor perfect la Continente' },
     { id: 'p-steaguri', name: '10 din 10 la Steaguri', desc: 'Scor perfect la Steaguri' },
+    { id: 'p-viata', name: '15 la 3 vieți', desc: 'Nimerește 15 întrebări la modul 3 vieți' },
     { id: 'p-vecini', name: '10 din 10 la Vecinii', desc: 'Scor perfect la Vecinii' },
     { id: 'p-romania', name: '10 din 10 la România', desc: 'Scor perfect la Cunoaște România' },
     { id: 'p-harta', name: '10 din 10 pe hartă', desc: 'Scor perfect la Găsește pe hartă' },
@@ -1492,6 +1538,14 @@
   function renderStrip() {
     var host = $('strip');
     host.textContent = '';
+    var xp = getXp(), li = levelOf(xp), nextT = li + 1 < LEVELS.length ? LEVELS[li + 1][0] : null;
+    var box = document.createElement('div'); box.className = 'xp';
+    var lt = document.createElement('span'); lt.className = 'xp-text';
+    lt.textContent = 'Nivel ' + (li + 1) + ' · ' + LEVELS[li][1] + ' · ' + xp + (nextT ? ' / ' + nextT : '') + ' XP';
+    var bar = document.createElement('div'); bar.className = 'xpbar';
+    var fill = document.createElement('span');
+    fill.style.width = (nextT ? Math.round(100 * (xp - LEVELS[li][0]) / (nextT - LEVELS[li][0])) : 100) + '%';
+    bar.appendChild(fill); box.appendChild(lt); box.appendChild(bar); host.appendChild(box);
     var n = currentStreak();
     var sk = document.createElement('span'); sk.className = 'streak';
     sk.textContent = n > 0 ? 'Serie: ' + n + (n === 1 ? ' zi' : ' zile') : 'Joacă azi ca să începi o serie';
@@ -1513,7 +1567,7 @@
       ['zilnic-' + todayStr(), 'Provocarea zilei'],
       ['capitale-europa', 'Capitale · Europa'], ['capitale-lume', 'Capitale · Lume'],
       ['judete', 'Reședințe de județ'], ['compara', 'Mai mare, mai mic'], ['continente', 'Continente'],
-      ['steaguri', 'Steaguri'], ['vecini', 'Vecinii'], ['romania', 'Cunoaște România'],
+      ['viata', '3 vieți'], ['steaguri', 'Steaguri'], ['vecini', 'Vecinii'], ['romania', 'Cunoaște România'],
       ['harta-europa', 'Hartă · Europa'], ['harta-asia', 'Hartă · Asia'], ['harta-africa', 'Hartă · Africa'],
       ['harta-america-nord', 'Hartă · America de Nord'], ['harta-america-sud', 'Hartă · America de Sud'],
       ['harta-oceania', 'Hartă · Oceania'], ['harta-judete', 'Hartă · Județe']
@@ -1532,14 +1586,14 @@
       return r.json();
     });
   }
-  function renderRows(list, rows, me) {
+  function renderRows(list, rows, me, suffix) {
     list.textContent = '';
     var marked = false;
     rows.forEach(function (row, i) {
       var li = document.createElement('li');
       var rk = document.createElement('span'); rk.className = 'rk'; rk.textContent = (i + 1) + '.';
       var nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = row.nume;
-      var sc2 = document.createElement('span'); sc2.className = 'sc'; sc2.textContent = row.scor + '/10';
+      var sc2 = document.createElement('span'); sc2.className = 'sc'; sc2.textContent = row.scor + (suffix === undefined ? '/10' : suffix);
       if (me && !marked && row.nume === me.nume && row.scor === me.scor) { li.className = 'me'; marked = true; }
       li.appendChild(rk); li.appendChild(nm); li.appendChild(sc2);
       list.appendChild(li);
@@ -1557,7 +1611,7 @@
     list.hidden = true; msg.textContent = 'Se încarcă…';
     fetchBoard(id).then(function (rows) {
       if (token !== boardToken) return;
-      renderRows(list, rows, null);
+      renderRows(list, rows, null, id === 'viata' ? '' : '/10');
       msg.textContent = rows.length ? 'Primii 10 jucători.' : 'Încă nu e nimeni în clasament. Fii primul.';
     }).catch(function () {
       if (token !== boardToken) return;
@@ -1640,7 +1694,7 @@
       track('scor-trimis', { joc: board, scor: score });
       return fetchBoard(board);
     }).then(function (rows) {
-      var found = renderRows($('end-board'), rows, { nume: name, scor: score });
+      var found = renderRows($('end-board'), rows, { nume: name, scor: score }, board === 'viata' ? '' : '/10');
       msg.textContent = found ? 'Scor trimis. Ești în top 10.' : 'Scor trimis. Încă nu ești în primii 10.';
     }).catch(function (e) {
       S.sent = false;
@@ -1714,7 +1768,7 @@
       var p = document.createElement('p'); p.textContent = g.blurb;
       var s = document.createElement('p'); s.className = 'sample'; s.textContent = g.sample;
       var r = document.createElement('p'); r.className = 'record';
-      r.textContent = best === null ? 'Încă nejucat' : 'Record: ' + best + '/10';
+      r.textContent = best === null ? 'Încă nejucat' : 'Record: ' + best + (id === 'viata' ? '' : '/10');
       b.appendChild(h); b.appendChild(p); b.appendChild(s); b.appendChild(r);
       b.addEventListener('click', function () { if (id === 'harta') openCont(); else startGame(id); });
       host.appendChild(b);
@@ -1728,10 +1782,12 @@
   function begin(o) {
     S = o;
     S.i = 0; S.score = 0; S.streak = 0; S.results = []; S.wrong = []; S.answered = false; S.sent = false;
-    S.t0 = Date.now(); S.finishMs = 0; S.sfxDone = false;
+    S.t0 = Date.now(); S.finishMs = 0; S.sfxDone = false; S.lives = 3;
+    $('st-q').hidden = !!S.endless; $('st-lives').hidden = !S.endless;
     renderOppBar();
     var t = $('ticks'); t.textContent = '';
-    S.rounds.forEach(function () { var d = document.createElement('span'); d.className = 'tick'; t.appendChild(d); });
+    (S.endless ? [0, 1, 2] : S.rounds).forEach(function () { var d = document.createElement('span'); d.className = 'tick'; t.appendChild(d); });
+    if (S.endless) renderLives();
     $('st-total').textContent = S.rounds.length;
     track('start', { joc: S.mode === 'daily' ? 'zilnic' : S.mode === 'repeat' ? 'repetare' : S.mode === 'duel' ? 'duel' : S.id });
     show('play');
@@ -1750,7 +1806,7 @@
     });
   }
   function startGame(id) {
-    begin({ id: id, mode: 'normal', board: boardId(id), rounds: GAMES[id].build(), label: GAMES[id].name + (GAMES[id].sub ? ' · ' + GAMES[id].sub() : '') });
+    begin({ id: id, mode: 'normal', board: boardId(id), rounds: GAMES[id].build(), endless: !!GAMES[id].endless, label: GAMES[id].name + (GAMES[id].sub ? ' · ' + GAMES[id].sub() : '') });
   }
   function startDaily() {
     var d = todayStr();
@@ -1768,7 +1824,8 @@
     $('st-score').textContent = S.score;
     $('st-streak').textContent = S.streak;
     var ticks = $('ticks').children;
-    for (var k = 0; k < ticks.length; k++) {
+    if (S.endless) renderLives();
+    else for (var k = 0; k < ticks.length; k++) {
       ticks[k].className = 'tick' + (S.results[k] === true ? ' good' : S.results[k] === false ? ' bad' : k === S.i ? ' now' : '');
     }
     if (S.i === 0) S.t0 = Date.now();
@@ -1811,9 +1868,10 @@
     if (r.fact) { $('fact').textContent = 'Știai că? ' + r.fact; $('fact').hidden = false; }
     $('st-score').textContent = S.score;
     $('st-streak').textContent = S.streak;
-    $('ticks').children[S.i].className = 'tick ' + (ok ? 'good' : 'bad');
+    if (S.endless) { if (!ok) S.lives--; renderLives(); }
+    else $('ticks').children[S.i].className = 'tick ' + (ok ? 'good' : 'bad');
     var nx = $('next');
-    nx.textContent = S.i === S.rounds.length - 1 ? 'Vezi rezultatul' : 'Următoarea';
+    nx.textContent = (S.endless ? S.lives <= 0 : S.i === S.rounds.length - 1) ? 'Vezi rezultatul' : 'Următoarea';
     nx.hidden = false;
     nx.focus();
     if (S.mode === 'duel') duelProgress(false);
@@ -1838,7 +1896,14 @@
 
   function next() {
     if (!S || !S.answered) return;
-    if (S.i === S.rounds.length - 1) return finish();
+    if (S.endless) {
+      if (S.lives <= 0) return finish();
+      if (S.i === S.rounds.length - 1) {
+        var more = viataBatch();
+        if (!more.length) return finish();
+        S.rounds = S.rounds.concat(more);
+      }
+    } else if (S.i === S.rounds.length - 1) return finish();
     S.i++;
     renderRound();
   }
@@ -1857,9 +1922,11 @@
       var prev = getBest(S.id);
       var isNew = prev === null || score > prev;
       if (isNew) store.set(bestKey(S.id), String(score));
-      rec = isNew ? 'Record nou: ' + score + '/' + total : 'Recordul tău: ' + prev + '/' + total;
+      var sfxT = S.endless ? '' : '/' + total;
+      rec = isNew ? 'Record nou: ' + score + sfxT : 'Recordul tău: ' + prev + sfxT;
       canSubmit = true;
-      if (score === total) award('p-' + S.id, bag);
+      if (S.endless) { if (score >= 15) award('p-viata', bag); }
+      else if (score === total) award('p-' + S.id, bag);
     } else if (S.mode === 'daily') {
       var dr = getJSON('hm-daily', {});
       var firstToday = dr.date !== S.date;
@@ -1882,6 +1949,17 @@
     $('end-msg').textContent = score === total ? 'Perfect. Harta nu mai are secrete pentru tine.'
       : score >= total * 0.6 ? 'Bine. Încă o rundă și îți depășești scorul.'
       : 'Se învață repede. Încearcă din nou, întrebările se schimbă.';
+    if (S.endless) {
+      $('end-msg').textContent = 'Ai rămas fără vieți. Ai nimerit ' + score + (score === 1 ? ' întrebare.' : ' întrebări.');
+    }
+    $('end-total').parentNode.hidden = !!S.endless;
+    var xpGain = score * (S.mode === 'repeat' ? 5 : 10);
+    if (!S.endless && S.mode !== 'repeat' && score === total) xpGain += 20;
+    if (S.mode === 'daily' && canSubmit) xpGain += 30;
+    if (S.mode === 'duel') xpGain += 10;
+    var xr = addXp(xpGain);
+    S.xpText = '+' + xpGain + ' XP · ' + (xr.leveled ? 'Nivel nou: ' + LEVELS[xr.level][1] + '!' : LEVELS[xr.level][1] + ', ' + xr.xp + ' XP');
+    $('end-xp').textContent = S.xpText; $('end-xp').hidden = xpGain === 0 && !xr.leveled;
     $('end-rec').textContent = rec;
     var bb = $('end-badges');
     bb.hidden = bag.length === 0;
@@ -2126,7 +2204,10 @@
     else v = 'Egalitate perfectă.';
     $('duel-verdict').textContent = v;
     $('duel-rematch').disabled = !!o.left;
-    if (o.done && !S.sfxDone) { S.sfxDone = true; sfx(S.score >= o.score ? 'win' : 'no'); }
+    if (o.done && !S.sfxDone) {
+      S.sfxDone = true; sfx(S.score >= o.score ? 'win' : 'no');
+      if (S.score > o.score || (S.score === o.score && S.finishMs < o.ms)) { addXp(25); $('end-xp').textContent += ' · +25 XP pentru victorie'; }
+    }
   }
 
   // ---------- evenimente ----------
