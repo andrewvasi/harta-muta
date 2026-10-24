@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Harta Mută</title>
-<meta name="description" content="Jocuri de geografie în română: capitale, județele României, continente și provocarea zilei.">
+<meta name="description" content="Jocuri de geografie în română: capitale, vecini, hărți interactive, județele României, continente și provocarea zilei.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;600;700&display=swap">
@@ -27,6 +27,8 @@
     --good-bg: #DDF2E7;
     --bad: #D32F2F;
     --bad-bg: #FDE3E3;
+    --land: #FBFEFE;
+    --land-dim: #C9D9DF;
     --f-display: 'Familjen Grotesk', 'Helvetica Neue', Arial, sans-serif;
     --f-body: 'Source Sans 3', system-ui, -apple-system, 'Segoe UI', sans-serif;
     --f-mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
@@ -45,6 +47,8 @@
       --good-bg: #12362A;
       --bad: #FF6B6B;
       --bad-bg: #40202A;
+      --land: #234B67;
+      --land-dim: #132E3E;
       color-scheme: dark;
     }
   }
@@ -61,6 +65,8 @@
     --good-bg: #12362A;
     --bad: #FF6B6B;
     --bad-bg: #40202A;
+    --land: #234B67;
+    --land-dim: #132E3E;
     color-scheme: dark;
   }
 
@@ -253,6 +259,24 @@
   .opt.right { animation: pop 0.3s ease; }
   @media (prefers-reduced-motion: reduce) { .opt.wrong, .opt.right { animation: none; } }
 
+  /* Hărți */
+  .prompt.long { font-size: clamp(1.5rem, 4.6vw, 2.2rem); line-height: 1.15; }
+  .mapbox { position: relative; border: 1.5px solid var(--ink); border-radius: 8px; background: var(--sea); overflow: hidden; }
+  .mapbox svg { display: block; width: 100%; height: auto; max-height: 72vh; touch-action: pan-y; cursor: grab; user-select: none; -webkit-user-select: none; }
+  .mapbox svg.zoomed { touch-action: none; }
+  .mtools { position: absolute; top: 8px; right: 8px; display: grid; gap: 6px; }
+  .mbtn { width: 40px; height: 40px; border: 1.5px solid var(--ink); background: var(--paper); border-radius: 6px; font: 700 1.2rem/1 var(--f-body); cursor: pointer; }
+  .mbtn:hover { background: var(--ink); color: var(--sea); }
+  .mp { fill: var(--land); stroke: var(--ink-soft); stroke-width: 0.7px; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+  .mp.on { cursor: pointer; }
+  .mp.on:hover { fill: color-mix(in srgb, var(--accent) 26%, var(--land)); }
+  .mp.off { fill: var(--land-dim); stroke: var(--rule-strong); pointer-events: none; }
+  .mp.mark { fill: var(--accent); stroke: var(--ink); stroke-width: 1.4px; }
+  .mp.right { fill: var(--good); stroke: var(--ink); stroke-width: 1.4px; }
+  .mp.wrong { fill: var(--bad); stroke: var(--ink); stroke-width: 1.4px; }
+  .mapbox.pick .mp.on, .mapbox.done .mp.on { pointer-events: none; cursor: default; }
+  .mlab { font-family: var(--f-display); font-weight: 700; fill: var(--ink); stroke: var(--paper); paint-order: stroke; stroke-linejoin: round; pointer-events: none; }
+
   /* Subsol și loc pentru reclame (inactiv până se completează ADSENSE în script) */
   .foot { display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; padding-top: 8px; font: 500 0.85rem var(--f-mono); }
   .foot a { color: var(--ink-soft); text-underline-offset: 3px; }
@@ -284,7 +308,7 @@
 
   <!-- ECRAN: alegerea jocului -->
   <main id="home" class="wrap" style="gap:22px">
-    <p class="lead">Cinci moduri de joc, <strong>zece întrebări</strong> fiecare. Gratuit și fără cont. Alege unul și vezi cât de bine știi harta.</p>
+    <p class="lead">Nouă moduri de joc, <strong>zece întrebări</strong> fiecare. Gratuit și fără cont. Alege unul și vezi cât de bine știi harta.</p>
 
     <div class="strip" id="strip" aria-label="Seria și insignele tale"></div>
 
@@ -298,9 +322,14 @@
       </div>
     </div>
 
+    <div class="zone">
+      <span class="zone-label">Continent pentru „Găsește pe hartă”</span>
+      <div class="board-tabs" id="mapzone"></div>
+    </div>
+
     <div class="tiles" id="tiles"></div>
     <div><button class="btn ghost" id="show-boards" type="button" hidden>Vezi clasamentele</button></div>
-    <p class="note">Suprafețele și populațiile sunt valori aproximative, rotunjite.</p>
+    <p class="note">Suprafețele și populațiile sunt valori aproximative, rotunjite. Hărțile sunt simplificate și folosesc datele Natural Earth (domeniu public).</p>
     <div class="ad-slot" id="ad-home" hidden></div>
   </main>
 
@@ -319,6 +348,14 @@
       <p class="kicker" id="kicker"></p>
       <h2 class="prompt" id="prompt"></h2>
       <p class="ask" id="ask"></p>
+    </div>
+    <div class="mapbox" id="mapbox" hidden>
+      <svg id="map" role="img" aria-label="Harta" viewBox="0 0 1000 520" preserveAspectRatio="xMidYMid meet"></svg>
+      <div class="mtools">
+        <button class="mbtn" id="mz-in" type="button" aria-label="Mărește harta">+</button>
+        <button class="mbtn" id="mz-out" type="button" aria-label="Micșorează harta">−</button>
+        <button class="mbtn" id="mz-reset" type="button" aria-label="Revino la harta întreagă">⟲</button>
+      </div>
     </div>
     <div class="opts" id="opts"></div>
     <div class="feedback">
@@ -391,44 +428,208 @@
   var CONT = { E: 'Europa', A: 'Asia', F: 'Africa', N: 'America de Nord', S: 'America de Sud', O: 'Oceania' };
   var CONT_ORDER = ['E', 'A', 'F', 'N', 'S', 'O'];
 
-  // nume, capitală, continent, suprafață (mii km²), populație (mil.), ambiguu între continente
+  // nume, capitală (null = nu apare la Capitale), continent, suprafață (km²), populație (mil.), ambiguu între continente, cod ISO
   var RAW = [
-    ['Albania','Tirana','E',28.7,2.8],['Austria','Viena','E',83.9,9.1],['Belgia','Bruxelles','E',30.7,11.7],
-    ['Bosnia și Herțegovina','Sarajevo','E',51.2,3.2],['Bulgaria','Sofia','E',111,6.4],['Cehia','Praga','E',78.9,10.8],
-    ['Croația','Zagreb','E',56.6,3.9],['Danemarca','Copenhaga','E',43.1,5.9],['Elveția','Berna','E',41.3,8.8],
-    ['Estonia','Tallinn','E',45.3,1.4],['Finlanda','Helsinki','E',338,5.6],['Franța','Paris','E',551,68],
-    ['Germania','Berlin','E',358,84],['Grecia','Atena','E',132,10.4],['Irlanda','Dublin','E',70.3,5.3],
-    ['Islanda','Reykjavík','E',103,0.38],['Italia','Roma','E',301,59],['Letonia','Riga','E',64.6,1.9],
-    ['Lituania','Vilnius','E',65.3,2.8],['Luxemburg','Luxemburg','E',2.6,0.66],['Macedonia de Nord','Skopje','E',25.7,1.8],
-    ['Malta','Valletta','E',0.3,0.54],['Moldova','Chișinău','E',33.8,null],['Muntenegru','Podgorica','E',13.8,0.62],
-    ['Norvegia','Oslo','E',null,5.5],['Olanda','Amsterdam','E',41.5,18],['Polonia','Varșovia','E',313,37],
-    ['Portugalia','Lisabona','E',92.2,10.3],['Regatul Unit','Londra','E',244,68],['România','București','E',238,19],
-    ['Serbia','Belgrad','E',88.4,6.7],['Slovacia','Bratislava','E',49,5.4],['Slovenia','Ljubljana','E',20.3,2.1],
-    ['Spania','Madrid','E',506,48],['Suedia','Stockholm','E',450,10.5],['Ucraina','Kiev','E',604,null],
-    ['Ungaria','Budapesta','E',93,9.6],['Belarus','Minsk','E',207.6,9.2],['Rusia','Moscova','E',17098,144,1],
-    ['Turcia','Ankara','A',784,85,1],
-    ['Afganistan','Kabul','A',652,null],['Arabia Saudită','Riad','A',2150,36],['China','Beijing','A',9597,1410],
-    ['Coreea de Sud','Seul','A',100,51],['Filipine','Manila','A',300,117],['India','New Delhi','A',3287,1430],
-    ['Indonezia','Jakarta','A',1905,278],['Iran','Teheran','A',1648,89],['Irak','Bagdad','A',438,45],
-    ['Japonia','Tokyo','A',378,124],['Kazahstan','Astana','A',2725,20,1],['Mongolia','Ulaanbaatar','A',1564,3.4],
-    ['Nepal','Kathmandu','A',147,30],['Pakistan','Islamabad','A',882,240],['Thailanda','Bangkok','A',513,72],
-    ['Vietnam','Hanoi','A',331,99],['Georgia','Tbilisi','A',69.7,3.7,1],['Armenia','Erevan','A',29.7,null,1],
-    ['Azerbaidjan','Baku','A',86.6,null,1],
-    ['Algeria','Alger','F',2382,46],['Angola','Luanda','F',1247,36],['Egipt','Cairo','F',1010,112],
-    ['Etiopia','Addis Abeba','F',1104,126],['Ghana','Accra','F',239,34],['Kenya','Nairobi','F',580,55],
-    ['Libia','Tripoli','F',1760,7],['Madagascar','Antananarivo','F',587,30],['Maroc','Rabat','F',447,37],
-    ['Nigeria','Abuja','F',924,224],['Senegal','Dakar','F',197,18],['Africa de Sud','Pretoria','F',1221,60],
-    ['Tanzania','Dodoma','F',945,67],['Tunisia','Tunis','F',164,12],
-    ['Canada','Ottawa','N',9985,40],['Cuba','Havana','N',110,11],['Mexic','Ciudad de Mexico','N',1964,128],
-    ['SUA','Washington, D.C.','N',9834,335],
-    ['Argentina','Buenos Aires','S',2780,46],['Brazilia','Brasília','S',8516,216],['Chile','Santiago','S',756,19.5],
-    ['Columbia','Bogotá','S',1142,52],['Ecuador','Quito','S',284,18],['Peru','Lima','S',1285,34],
-    ['Uruguay','Montevideo','S',176,3.4],['Venezuela','Caracas','S',916,28],
-    ['Australia','Canberra','O',7692,26],['Noua Zeelandă','Wellington','O',268,5.2]
+    ["Afganistan","Kabul","A",652230,43.8,0,"AFG"],
+    ["Albania","Tirana","E",28748,2.3,0,"ALB"],
+    ["Algeria","Alger","F",2381741,47.4,0,"DZA"],
+    ["Andorra","Andorra la Vella","E",468,0.08,0,"AND"],
+    ["Angola","Luanda","F",1246700,39,0,"AGO"],
+    ["Antigua și Barbuda","Saint John's","N",442,0.09,0,"ATG"],
+    ["Argentina","Buenos Aires","S",2780400,45.9,0,"ARG"],
+    ["Armenia","Erevan","A",29743,3.1,1,"ARM"],
+    ["Australia","Canberra","O",7692024,27.6,0,"AUS"],
+    ["Austria","Viena","E",83871,9.2,0,"AUT"],
+    ["Azerbaidjan","Baku","A",86600,10.2,1,"AZE"],
+    ["Bahamas","Nassau","N",13943,0.4,0,"BHS"],
+    ["Bahrain","Manama","A",765,1.6,0,"BHR"],
+    ["Bangladesh","Dhaka","A",147570,175.7,0,"BGD"],
+    ["Barbados","Bridgetown","N",430,0.28,0,"BRB"],
+    ["Belarus","Minsk","E",207600,9.1,0,"BLR"],
+    ["Belgia","Bruxelles","E",30528,11.9,0,"BEL"],
+    ["Belize","Belmopan","N",22966,0.42,0,"BLZ"],
+    ["Benin",null,"F",112622,14.8,0,"BEN"],
+    ["Bhutan","Thimphu","A",38394,0.8,0,"BTN"],
+    ["Bolivia",null,"S",1098581,12.6,0,"BOL"],
+    ["Bosnia și Herțegovina","Sarajevo","E",51209,3.1,0,"BIH"],
+    ["Botswana","Gaborone","F",582000,2.6,0,"BWA"],
+    ["Brazilia","Brasília","S",8515767,212.8,0,"BRA"],
+    ["Brunei","Bandar Seri Begawan","A",5765,0.47,0,"BRN"],
+    ["Bulgaria","Sofia","E",110879,6.4,0,"BGR"],
+    ["Burkina Faso","Ouagadougou","F",272967,24.1,0,"BFA"],
+    ["Burundi",null,"F",27834,14.4,0,"BDI"],
+    ["Cambodgia","Phnom Penh","A",181035,17.8,0,"KHM"],
+    ["Camerun","Yaoundé","F",475442,29.9,0,"CMR"],
+    ["Canada","Ottawa","N",9984670,41.7,0,"CAN"],
+    ["Capul Verde","Praia","F",4033,0.53,0,"CPV"],
+    ["Republica Centrafricană","Bangui","F",622984,5.5,0,"CAF"],
+    ["Ciad","N'Djamena","F",1284000,21,0,"TCD"],
+    ["Chile","Santiago","S",756102,19.9,0,"CHL"],
+    ["China","Beijing","A",9706961,1406.6,0,"CHN"],
+    ["Columbia","Bogotá","S",1141748,53.4,0,"COL"],
+    ["Comore","Moroni","F",1862,0.88,0,"COM"],
+    ["Costa Rica","San José","N",51100,5.2,0,"CRI"],
+    ["Croația","Zagreb","E",56594,3.9,0,"HRV"],
+    ["Cuba","Havana","N",109884,10.9,0,"CUB"],
+    ["Cipru","Nicosia","E",9251,1.4,1,"CYP"],
+    ["Cehia","Praga","E",78865,10.9,0,"CZE"],
+    ["Danemarca","Copenhaga","E",43094,6,0,"DNK"],
+    ["Djibouti","Djibouti","F",23200,1.2,0,"DJI"],
+    ["Dominica","Roseau","N",751,0.07,0,"DMA"],
+    ["Republica Dominicană","Santo Domingo","N",48671,11.5,0,"DOM"],
+    ["R.D. Congo","Kinshasa","F",2344858,112.8,0,"COD"],
+    ["Ecuador","Quito","S",276841,18.3,0,"ECU"],
+    ["Egipt","Cairo","F",1002450,118.4,0,"EGY"],
+    ["El Salvador","San Salvador","N",21041,6.4,0,"SLV"],
+    ["Guineea Ecuatorială","Malabo","F",28051,1.9,0,"GNQ"],
+    ["Eritreea","Asmara","F",117600,3.6,0,"ERI"],
+    ["Estonia","Tallinn","E",45227,1.4,0,"EST"],
+    ["Eswatini",null,"F",17364,1.3,0,"SWZ"],
+    ["Etiopia","Addis Abeba","F",1104300,135.5,0,"ETH"],
+    ["Fiji","Suva","O",18272,0.93,0,"FJI"],
+    ["Finlanda","Helsinki","E",338424,5.6,0,"FIN"],
+    ["Franța","Paris","E",551695,68.7,0,"FRA"],
+    ["Gabon","Libreville","F",267668,2.6,0,"GAB"],
+    ["Gambia","Banjul","F",10689,2.8,0,"GMB"],
+    ["Georgia","Tbilisi","A",69700,3.9,1,"GEO"],
+    ["Germania","Berlin","E",357114,83.5,0,"DEU"],
+    ["Ghana","Accra","F",238533,35.1,0,"GHA"],
+    ["Grecia","Atena","E",131990,10.4,0,"GRC"],
+    ["Grenada","Saint George's","N",344,0.12,0,"GRD"],
+    ["Guatemala","Ciudad de Guatemala","N",108889,18.7,0,"GTM"],
+    ["Guineea","Conakry","F",245857,15.1,0,"GIN"],
+    ["Guineea-Bissau","Bissau","F",36125,2.2,0,"GNB"],
+    ["Guyana","Georgetown","S",214969,0.84,0,"GUY"],
+    ["Haiti","Port-au-Prince","N",27750,11.9,0,"HTI"],
+    ["Honduras","Tegucigalpa","N",112492,11,0,"HND"],
+    ["Ungaria","Budapesta","E",93028,9.5,0,"HUN"],
+    ["Islanda","Reykjavík","E",103000,0.39,0,"ISL"],
+    ["India","New Delhi","A",3287590,1463.9,0,"IND"],
+    ["Indonezia","Jakarta","A",1904569,285.7,0,"IDN"],
+    ["Iran","Teheran","A",1648195,92.4,0,"IRN"],
+    ["Irak","Bagdad","A",438317,47,0,"IRQ"],
+    ["Irlanda","Dublin","E",70273,5.5,0,"IRL"],
+    ["Israel",null,"A",20770,10.1,0,"ISR"],
+    ["Italia","Roma","E",301336,58.9,0,"ITA"],
+    ["Coasta de Fildeș",null,"F",322463,32.7,0,"CIV"],
+    ["Jamaica","Kingston","N",10991,2.8,0,"JAM"],
+    ["Japonia","Tokyo","A",377930,123.4,0,"JPN"],
+    ["Iordania","Amman","A",89342,11.5,0,"JOR"],
+    ["Kazahstan","Astana","A",2724900,20.8,1,"KAZ"],
+    ["Kenya","Nairobi","F",580367,57.5,0,"KEN"],
+    ["Kiribati",null,"O",811,0.14,0,"KIR"],
+    ["Kuweit","Kuweit","A",17818,4.9,0,"KWT"],
+    ["Kârgâzstan","Bișkek","A",199951,7.3,0,"KGZ"],
+    ["Laos","Vientiane","A",236800,7.9,0,"LAO"],
+    ["Letonia","Riga","E",64559,1.8,0,"LVA"],
+    ["Liban","Beirut","A",10452,5.8,0,"LBN"],
+    ["Lesotho","Maseru","F",30355,2.4,0,"LSO"],
+    ["Liberia","Monrovia","F",111369,5.7,0,"LBR"],
+    ["Libia","Tripoli","F",1759540,7.5,0,"LBY"],
+    ["Liechtenstein","Vaduz","E",160,0.04,0,"LIE"],
+    ["Lituania","Vilnius","E",65300,2.9,0,"LTU"],
+    ["Luxemburg","Luxemburg","E",2586,0.69,0,"LUX"],
+    ["Madagascar","Antananarivo","F",587041,32.7,0,"MDG"],
+    ["Malawi","Lilongwe","F",118484,22.2,0,"MWI"],
+    ["Malaysia","Kuala Lumpur","A",330803,36,0,"MYS"],
+    ["Maldive","Malé","A",300,0.53,0,"MDV"],
+    ["Mali","Bamako","F",1240192,25.2,0,"MLI"],
+    ["Malta","Valletta","E",316,0.58,0,"MLT"],
+    ["Insulele Marshall","Majuro","O",181,0.04,0,"MHL"],
+    ["Mauritania","Nouakchott","F",1030700,5.3,0,"MRT"],
+    ["Mauritius","Port Louis","F",2040,1.2,0,"MUS"],
+    ["Mexic","Ciudad de Mexico","N",1964375,131.9,0,"MEX"],
+    ["Micronezia","Palikir","O",702,0.11,0,"FSM"],
+    ["Republica Moldova","Chișinău","E",33846,2.4,0,"MDA"],
+    ["Monaco","Monaco","E",2,0.04,0,"MCO"],
+    ["Mongolia","Ulan Bator","A",1564110,3.6,0,"MNG"],
+    ["Muntenegru","Podgorica","E",13812,0.62,0,"MNE"],
+    ["Maroc","Rabat","F",446550,38.4,0,"MAR"],
+    ["Mozambic","Maputo","F",801590,35.6,0,"MOZ"],
+    ["Myanmar","Naypyidaw","A",676578,54.9,0,"MMR"],
+    ["Namibia","Windhoek","F",825615,3.1,0,"NAM"],
+    ["Nauru",null,"O",21,0.01,0,"NRU"],
+    ["Nepal","Kathmandu","A",147181,29.6,0,"NPL"],
+    ["Olanda","Amsterdam","E",41850,18.1,0,"NLD"],
+    ["Noua Zeelandă","Wellington","O",270467,5.3,0,"NZL"],
+    ["Nicaragua","Managua","N",130373,7,0,"NIC"],
+    ["Niger","Niamey","F",1267000,27.9,0,"NER"],
+    ["Nigeria","Abuja","F",923768,237.5,0,"NGA"],
+    ["Coreea de Nord","Phenian","A",120538,26.6,0,"PRK"],
+    ["Macedonia de Nord","Skopje","E",25713,1.8,0,"MKD"],
+    ["Norvegia","Oslo","E",323802,5.6,0,"NOR"],
+    ["Oman","Muscat","A",309500,5.5,0,"OMN"],
+    ["Pakistan","Islamabad","A",881912,255.2,0,"PAK"],
+    ["Palau","Ngerulmud","O",459,0.02,0,"PLW"],
+    ["Panama","Panama","N",75417,4.6,0,"PAN"],
+    ["Papua-Noua Guinee","Port Moresby","O",462840,10.8,0,"PNG"],
+    ["Paraguay","Asunción","S",406752,7,0,"PRY"],
+    ["Peru","Lima","S",1285216,34.6,0,"PER"],
+    ["Filipine","Manila","A",342353,116.8,0,"PHL"],
+    ["Polonia","Varșovia","E",312679,36.4,0,"POL"],
+    ["Portugalia","Lisabona","E",92090,10.8,0,"PRT"],
+    ["Qatar","Doha","A",11586,3,0,"QAT"],
+    ["Republica Congo","Brazzaville","F",342000,6.5,0,"COG"],
+    ["România","București","E",238391,19,0,"ROU"],
+    ["Rusia","Moscova","E",17098242,143.5,1,"RUS"],
+    ["Rwanda","Kigali","F",26338,14.6,0,"RWA"],
+    ["Saint Kitts și Nevis","Basseterre","N",261,0.05,0,"KNA"],
+    ["Sfânta Lucia","Castries","N",616,0.18,0,"LCA"],
+    ["Saint Vincent și Grenadinele","Kingstown","N",389,0.1,0,"VCT"],
+    ["Samoa","Apia","O",2842,0.22,0,"WSM"],
+    ["San Marino","San Marino","E",61,0.03,0,"SMR"],
+    ["Sao Tome și Principe","São Tomé","F",964,0.24,0,"STP"],
+    ["Arabia Saudită","Riad","A",2149690,37,0,"SAU"],
+    ["Senegal","Dakar","F",196722,18.9,0,"SEN"],
+    ["Serbia","Belgrad","E",88361,6.5,0,"SRB"],
+    ["Seychelles","Victoria","F",452,0.12,0,"SYC"],
+    ["Sierra Leone","Freetown","F",71740,8.8,0,"SLE"],
+    ["Singapore","Singapore","A",710,6.1,0,"SGP"],
+    ["Slovacia","Bratislava","E",49037,5.4,0,"SVK"],
+    ["Slovenia","Ljubljana","E",20273,2.1,0,"SVN"],
+    ["Insulele Solomon","Honiara","O",28896,0.84,0,"SLB"],
+    ["Somalia","Mogadiscio","F",637657,19.7,0,"SOM"],
+    ["Africa de Sud","Pretoria","F",1221037,64.7,0,"ZAF"],
+    ["Coreea de Sud","Seul","A",100210,51.7,0,"KOR"],
+    ["Sudanul de Sud","Juba","F",619745,12.2,0,"SSD"],
+    ["Spania","Madrid","E",505992,49.4,0,"ESP"],
+    ["Sri Lanka",null,"A",65610,21.8,0,"LKA"],
+    ["Sudan","Khartum","F",1886068,51.7,0,"SDN"],
+    ["Suriname","Paramaribo","S",163820,0.64,0,"SUR"],
+    ["Suedia","Stockholm","E",450295,10.6,0,"SWE"],
+    ["Elveția","Berna","E",41284,9.1,0,"CHE"],
+    ["Siria","Damasc","A",185180,25.6,0,"SYR"],
+    ["Tadjikistan","Dușanbe","A",143100,10.8,0,"TJK"],
+    ["Tanzania","Dodoma","F",945087,70.5,0,"TZA"],
+    ["Thailanda","Bangkok","A",513120,71.6,0,"THA"],
+    ["Timorul de Est","Dili","A",14874,1.4,0,"TLS"],
+    ["Togo","Lomé","F",56785,8.6,0,"TGO"],
+    ["Tonga","Nuku'alofa","O",747,0.1,0,"TON"],
+    ["Trinidad și Tobago","Port of Spain","N",5130,1.4,0,"TTO"],
+    ["Tunisia","Tunis","F",163610,12.3,0,"TUN"],
+    ["Turcia","Ankara","A",783562,85.9,1,"TUR"],
+    ["Turkmenistan","Așgabat","A",488100,7.6,0,"TKM"],
+    ["Tuvalu","Funafuti","O",26,0.01,0,"TUV"],
+    ["Uganda","Kampala","F",241550,51.4,0,"UGA"],
+    ["Ucraina","Kiev","E",603500,39,0,"UKR"],
+    ["Emiratele Arabe Unite","Abu Dhabi","A",83600,11.5,0,"ARE"],
+    ["Regatul Unit","Londra","E",242900,69.5,0,"GBR"],
+    ["SUA","Washington, D.C.","N",9372610,341.8,0,"USA"],
+    ["Uruguay","Montevideo","S",181034,3.4,0,"URY"],
+    ["Uzbekistan","Tașkent","A",447400,37.1,0,"UZB"],
+    ["Vanuatu","Port Vila","O",12189,0.34,0,"VUT"],
+    ["Vatican",null,"E",0,null,0,"VAT"],
+    ["Venezuela","Caracas","S",916445,28.5,0,"VEN"],
+    ["Vietnam","Hanoi","A",331212,101.6,0,"VNM"],
+    ["Yemen",null,"A",527968,41.8,0,"YEM"],
+    ["Zambia","Lusaka","F",752612,21.9,0,"ZMB"],
+    ["Zimbabwe","Harare","F",390757,17,0,"ZWE"]
   ];
   var COUNTRIES = RAW.map(function (r) {
-    return { n: r[0], c: r[1], k: r[2], a: r[3], p: r[4], amb: !!r[5] };
+    return { n: r[0], c: r[1], k: r[2], a: r[3], p: r[4], amb: !!r[5], cca: r[6] };
   });
+  // frontiere terestre: cod țară → coduri ale vecinilor
+  var BORDERS = {"AFG":["IRN","PAK","TKM","UZB","TJK","CHN"],"ALB":["MNE","GRC","MKD"],"DZA":["TUN","LBY","NER","MRT","MLI","MAR"],"AND":["FRA","ESP"],"AGO":["COG","COD","ZMB","NAM"],"ATG":[],"ARG":["BOL","BRA","CHL","PRY","URY"],"ARM":["AZE","GEO","IRN","TUR"],"AUS":[],"AUT":["CZE","DEU","HUN","ITA","LIE","SVK","SVN","CHE"],"AZE":["ARM","GEO","IRN","RUS","TUR"],"BHS":[],"BHR":[],"BGD":["MMR","IND"],"BRB":[],"BLR":["LVA","LTU","POL","RUS","UKR"],"BEL":["FRA","DEU","LUX","NLD"],"BLZ":["GTM","MEX"],"BEN":["BFA","NER","NGA","TGO"],"BTN":["CHN","IND"],"BOL":["ARG","BRA","CHL","PRY","PER"],"BIH":["HRV","MNE","SRB"],"BWA":["NAM","ZAF","ZMB","ZWE"],"BRA":["ARG","BOL","COL","GUY","PRY","PER","SUR","URY","VEN"],"BRN":["MYS"],"BGR":["GRC","MKD","ROU","SRB","TUR"],"BFA":["BEN","CIV","GHA","MLI","NER","TGO"],"BDI":["COD","RWA","TZA"],"KHM":["LAO","THA","VNM"],"CMR":["CAF","TCD","COG","GNQ","GAB","NGA"],"CAN":["USA"],"CPV":[],"CAF":["CMR","TCD","COD","COG","SSD","SDN"],"TCD":["CMR","CAF","LBY","NER","NGA","SDN"],"CHL":["ARG","BOL","PER"],"CHN":["AFG","BTN","MMR","IND","KAZ","NPL","PRK","KGZ","LAO","MNG","PAK","RUS","TJK","VNM"],"COL":["BRA","ECU","PAN","PER","VEN"],"COM":[],"CRI":["NIC","PAN"],"HRV":["BIH","HUN","MNE","SRB","SVN"],"CUB":[],"CYP":[],"CZE":["AUT","DEU","POL","SVK"],"DNK":["DEU"],"DJI":["ERI","ETH","SOM"],"DMA":[],"DOM":["HTI"],"COD":["AGO","BDI","CAF","COG","RWA","SSD","TZA","UGA","ZMB"],"ECU":["COL","PER"],"EGY":["ISR","LBY","SDN"],"SLV":["GTM","HND"],"GNQ":["CMR","GAB"],"ERI":["DJI","ETH","SDN"],"EST":["LVA","RUS"],"SWZ":["MOZ","ZAF"],"ETH":["DJI","ERI","KEN","SOM","SSD","SDN"],"FJI":[],"FIN":["NOR","SWE","RUS"],"FRA":["AND","BEL","DEU","ITA","LUX","MCO","ESP","CHE"],"GAB":["CMR","COG","GNQ"],"GMB":["SEN"],"GEO":["ARM","AZE","RUS","TUR"],"DEU":["AUT","BEL","CZE","DNK","FRA","LUX","NLD","POL","CHE"],"GHA":["BFA","CIV","TGO"],"GRC":["ALB","BGR","TUR","MKD"],"GRD":[],"GTM":["BLZ","SLV","HND","MEX"],"GIN":["CIV","GNB","LBR","MLI","SEN","SLE"],"GNB":["GIN","SEN"],"GUY":["BRA","SUR","VEN"],"HTI":["DOM"],"HND":["GTM","SLV","NIC"],"HUN":["AUT","HRV","ROU","SRB","SVK","SVN","UKR"],"ISL":[],"IND":["BGD","BTN","MMR","CHN","NPL","PAK"],"IDN":["TLS","MYS","PNG"],"IRN":["AFG","ARM","AZE","IRQ","PAK","TUR","TKM"],"IRQ":["IRN","JOR","KWT","SAU","SYR","TUR"],"IRL":["GBR"],"ISR":["EGY","JOR","LBN","SYR"],"ITA":["AUT","FRA","SMR","SVN","CHE","VAT"],"CIV":["BFA","GHA","GIN","LBR","MLI"],"JAM":[],"JPN":[],"JOR":["IRQ","ISR","SAU","SYR"],"KAZ":["CHN","KGZ","RUS","TKM","UZB"],"KEN":["ETH","SOM","SSD","TZA","UGA"],"KIR":[],"KWT":["IRQ","SAU"],"KGZ":["CHN","KAZ","TJK","UZB"],"LAO":["MMR","KHM","CHN","THA","VNM"],"LVA":["BLR","EST","LTU","RUS"],"LBN":["ISR","SYR"],"LSO":["ZAF"],"LBR":["GIN","CIV","SLE"],"LBY":["DZA","TCD","EGY","NER","SDN","TUN"],"LIE":["AUT","CHE"],"LTU":["BLR","LVA","POL","RUS"],"LUX":["BEL","FRA","DEU"],"MDG":[],"MWI":["MOZ","TZA","ZMB"],"MYS":["BRN","IDN","THA"],"MDV":[],"MLI":["DZA","BFA","GIN","CIV","MRT","NER","SEN"],"MLT":[],"MHL":[],"MRT":["DZA","MLI","SEN"],"MUS":[],"MEX":["BLZ","GTM","USA"],"FSM":[],"MDA":["ROU","UKR"],"MCO":["FRA"],"MNG":["CHN","RUS"],"MNE":["ALB","BIH","HRV","SRB"],"MAR":["DZA"],"MOZ":["MWI","ZAF","SWZ","TZA","ZMB","ZWE"],"MMR":["BGD","CHN","IND","LAO","THA"],"NAM":["AGO","BWA","ZAF","ZMB"],"NRU":[],"NPL":["CHN","IND"],"NLD":["BEL","DEU"],"NZL":[],"NIC":["CRI","HND"],"NER":["DZA","BEN","BFA","TCD","LBY","MLI","NGA"],"NGA":["BEN","CMR","TCD","NER"],"PRK":["CHN","KOR","RUS"],"MKD":["ALB","BGR","GRC","SRB"],"NOR":["FIN","SWE","RUS"],"OMN":["SAU","ARE","YEM"],"PAK":["AFG","CHN","IND","IRN"],"PLW":[],"PAN":["COL","CRI"],"PNG":["IDN"],"PRY":["ARG","BOL","BRA"],"PER":["BOL","BRA","CHL","COL","ECU"],"PHL":[],"POL":["BLR","CZE","DEU","LTU","RUS","SVK","UKR"],"PRT":["ESP"],"QAT":["SAU"],"COG":["AGO","CMR","CAF","COD","GAB"],"ROU":["BGR","HUN","MDA","SRB","UKR"],"RUS":["AZE","BLR","CHN","EST","FIN","GEO","KAZ","PRK","LVA","LTU","MNG","NOR","POL","UKR"],"RWA":["BDI","COD","TZA","UGA"],"KNA":[],"LCA":[],"VCT":[],"WSM":[],"SMR":["ITA"],"STP":[],"SAU":["IRQ","JOR","KWT","OMN","QAT","ARE","YEM"],"SEN":["GMB","GIN","GNB","MLI","MRT"],"SRB":["BIH","BGR","HRV","HUN","MKD","MNE","ROU"],"SYC":[],"SLE":["GIN","LBR"],"SGP":[],"SVK":["AUT","CZE","HUN","POL","UKR"],"SVN":["AUT","HRV","ITA","HUN"],"SLB":[],"SOM":["DJI","ETH","KEN"],"ZAF":["BWA","LSO","MOZ","NAM","SWZ","ZWE"],"KOR":["PRK"],"SSD":["CAF","COD","ETH","KEN","SDN","UGA"],"ESP":["AND","FRA","PRT"],"LKA":["IND"],"SDN":["CAF","TCD","EGY","ERI","ETH","LBY","SSD"],"SUR":["BRA","GUY"],"SWE":["FIN","NOR"],"CHE":["AUT","FRA","ITA","LIE","DEU"],"SYR":["IRQ","ISR","JOR","LBN","TUR"],"TJK":["AFG","CHN","KGZ","UZB"],"TZA":["BDI","COD","KEN","MWI","MOZ","RWA","UGA","ZMB"],"THA":["MMR","KHM","LAO","MYS"],"TLS":["IDN"],"TGO":["BEN","BFA","GHA"],"TON":[],"TTO":[],"TUN":["DZA","LBY"],"TUR":["ARM","AZE","BGR","GEO","GRC","IRN","IRQ","SYR"],"TKM":["AFG","IRN","KAZ","UZB"],"TUV":[],"UGA":["COD","KEN","RWA","SSD","TZA"],"UKR":["BLR","HUN","MDA","POL","ROU","RUS","SVK"],"ARE":["OMN","SAU"],"GBR":["IRL"],"USA":["CAN","MEX"],"URY":["ARG","BRA"],"UZB":["AFG","KAZ","KGZ","TJK","TKM"],"VUT":[],"VAT":["ITA"],"VEN":["BRA","COL","GUY"],"VNM":["KHM","CHN","LAO"],"YEM":["OMN","SAU"],"ZMB":["AGO","BWA","COD","MWI","MOZ","NAM","TZA","ZWE"],"ZWE":["BWA","MOZ","ZAF","ZMB"]};
 
   var COUNTIES = [
     ['Alba','Alba Iulia'],['Arad','Arad'],['Argeș','Pitești'],['Bacău','Bacău'],['Bihor','Oradea'],
@@ -494,7 +695,49 @@
     'Etiopia': 'Etiopia folosește un calendar cu 13 luni.',
     'Senegal': 'Dakar se află lângă cel mai vestic punct al Africii continentale.',
     'Tunisia': 'Ruinele Cartaginei se află lângă Tunis.',
-    'Pakistan': 'Islamabad a fost construit în anii 1960 ca nouă capitală.'
+    'Pakistan': 'Islamabad a fost construit în anii 1960 ca nouă capitală.',
+    'India': 'India este cea mai populată țară din lume.',
+    'Vatican': 'Vaticanul este cel mai mic stat din lume, cu mai puțin de 1 km².',
+    'Monaco': 'Monaco este al doilea cel mai mic stat din lume, după Vatican.',
+    'Nauru': 'Nauru este una dintre cele mai mici țări din lume.',
+    'Argentina': 'Aconcagua, cel mai înalt vârf din America de Sud, se află în Argentina.',
+    'Peru': 'Cetatea incașă Machu Picchu se află în Peru.',
+    'Zambia': 'Cascada Victoria se află la granița dintre Zambia și Zimbabwe.',
+    'Zimbabwe': 'Cascada Victoria se află la granița dintre Zimbabwe și Zambia.',
+    'Sudan': 'Khartoum se află la întâlnirea dintre Nilul Alb și Nilul Albastru.',
+    'Sudanul de Sud': 'Sudanul de Sud a devenit independent în 2011 și este cel mai nou stat membru ONU.',
+    'Panama': 'Canalul Panama leagă Oceanul Atlantic de Oceanul Pacific.',
+    'Costa Rica': 'Costa Rica nu mai are armată din 1948.',
+    'Finlanda': 'Finlanda are peste 180.000 de lacuri.',
+    'Laos': 'Laos este singura țară din Asia de Sud-Est fără ieșire la mare.',
+    'Turkmenistan': 'În Turkmenistan arde de zeci de ani craterul de gaz Darvaza.',
+    'Iordania': 'Orașul antic Petra, din Iordania, este săpat în stâncă.',
+    'Emiratele Arabe Unite': 'Burj Khalifa din Dubai este cea mai înaltă clădire din lume.',
+    'Mali': 'Orașul Timbuktu se află în Mali.',
+    'Singapore': 'Singapore este în același timp oraș și stat.',
+    'Maldive': 'Maldivele au cel mai jos punct culminant dintre toate țările lumii.',
+    'Bhutan': 'Bhutan măsoară progresul și prin „fericirea națională brută”.',
+    'Bolivia': 'Bolivia are două capitale: La Paz și Sucre.',
+    'Bangladesh': 'Bangladesh este una dintre cele mai dens populate țări din lume.',
+    'Kiribati': 'Kiribati este singura țară care se întinde în toate cele patru emisfere.',
+    'Liechtenstein': 'Liechtenstein este una dintre cele două țări din lume înconjurate doar de state fără ieșire la mare.',
+    'Uzbekistan': 'Uzbekistan este una dintre cele două țări din lume „dublu fără ieșire la mare”.',
+    'Lesotho': 'Lesotho este înconjurat în întregime de Africa de Sud.',
+    'San Marino': 'San Marino se consideră cea mai veche republică încă existentă.',
+    'Luxemburg': 'Luxemburg este singurul mare ducat suveran din lume.',
+    'Papua-Noua Guinee': 'În Papua-Noua Guinee se vorbesc peste 800 de limbi.',
+    'R.D. Congo': 'R.D. Congo este cea mai mare țară din Africa Subsahariană.',
+    'Cambodgia': 'Angkor Wat, din Cambodgia, este cel mai mare monument religios din lume.',
+    'Myanmar': 'Capitala Naypyidaw a înlocuit Yangonul în 2006.',
+    'Qatar': 'Qatar a găzduit Campionatul Mondial de fotbal din 2022.',
+    'Uruguay': 'Uruguay a găzduit și a câștigat primul Campionat Mondial de fotbal, în 1930.',
+    'Cuba': 'Cuba este cea mai mare insulă din Caraibe.',
+    'Cipru': 'Nicosia este o capitală împărțită în două.',
+    'Botswana': 'Delta Okavango, una dintre marile delte interioare ale lumii, se află în Botswana.',
+    'Namibia': 'Țara își ia numele de la deșertul Namib, unul dintre cele mai vechi din lume.',
+    'Rwanda': 'Rwanda este numită „țara celor o mie de dealuri”.',
+    'Uganda': 'Lacul Victoria, cel mai mare lac din Africa, e împărțit între Uganda, Kenya și Tanzania.',
+    'Samoa': 'Samoa a sărit o zi din calendar în 2011, când a trecut de partea cealaltă a liniei de dată.'
   };
   var FACTS_J = {
     'Bacău': 'Râul Bistrița străbate județul Bacău.',
@@ -565,7 +808,7 @@
     d.setUTCDate(d.getUTCDate() - 1);
     return d.toISOString().slice(0, 10);
   }
-  function fmtArea(thousands) { return Math.round(thousands * 1000).toLocaleString('ro-RO') + ' km²'; }
+  function fmtArea(km2) { return Math.round(km2).toLocaleString('ro-RO') + ' km²'; }
   function fmtPop(m) { return m.toLocaleString('ro-RO', { maximumFractionDigits: 2 }) + ' mil. locuitori'; }
 
   // ---------- statistici (Umami, opțional) ----------
@@ -678,10 +921,13 @@
   }
   function buildCompara() {
     var rounds = [], used = {}, guard = 0;
-    while (rounds.length < ROUNDS && guard++ < 800) {
+    while (rounds.length < ROUNDS && guard++ < 1500) {
       var f = rng() < 0.5 ? 'a' : 'p';
-      var pool = COUNTRIES.filter(function (x) { return x[f] != null; });
-      var two = shuffle(pool).slice(0, 2), x = two[0], y = two[1];
+      var pool = COUNTRIES.filter(function (z) { return f === 'a' ? z.a >= 300 : (z.p != null && z.p >= 0.05); });
+      var x = pool[Math.floor(rng() * pool.length)];
+      var same = pool.filter(function (z) { return z !== x && z.k === x.k; });
+      var y = (rng() < 0.7 && same.length) ? same[Math.floor(rng() * same.length)] : pool[Math.floor(rng() * pool.length)];
+      if (y === x) continue;
       var hi = Math.max(x[f], y[f]), lo = Math.min(x[f], y[f]);
       if (hi / lo < 1.3) continue;
       var key = [x.n, y.n].sort().join('|') + f;
@@ -727,7 +973,7 @@
     } finally { rng = prev; }
   }
   function reshuffleRound(r) {
-    if (r.layout === 'six') return r;
+    if (r.layout === 'six' || !r.options) return r;
     var correct = r.options[r.correct];
     var opts = shuffle(r.options);
     var copy = {};
@@ -736,17 +982,372 @@
     return copy;
   }
 
+  // ---------- vecini ----------
+  var BYC = {};
+  COUNTRIES.forEach(function (x) { BYC[x.cca] = x; });
+  function nameList(codes) { return codes.map(function (c) { return BYC[c].n; }); }
+  function buildVecini() {
+    var pool = COUNTRIES.filter(function (x) { var n = (BORDERS[x.cca] || []).length; return n >= 2 && n <= 10; });
+    return shuffle(pool).slice(0, ROUNDS).map(function (x) {
+      var nb = BORDERS[x.cca];
+      var non = COUNTRIES.filter(function (y) { return y !== x && nb.indexOf(y.cca) === -1; });
+      var near = shuffle(non.filter(function (y) { return y.k === x.k; }));
+      var far = shuffle(non.filter(function (y) { return y.k !== x.k; }));
+      var pickNon = function (n) { return near.concat(far).slice(0, n); };
+      var list = nameList(nb).join(', ');
+      var opts, correct, ask, reveal, short;
+      if (nb.length >= 3 && rng() < 0.4) {
+        var odd = pickNon(1)[0];
+        opts = shuffle(shuffle(nb).slice(0, 3).map(function (c) { return BYC[c]; }).concat([odd]));
+        correct = opts.indexOf(odd);
+        ask = 'Care dintre aceste țări NU are frontieră terestră cu ea?';
+        reveal = odd.n + ' nu se învecinează cu ' + x.n + '. Vecinii ei: ' + list + '.';
+        short = x.n + ' → fără frontieră cu ' + odd.n;
+      } else {
+        var yes = BYC[nb[Math.floor(rng() * nb.length)]];
+        opts = shuffle([yes].concat(pickNon(3)));
+        correct = opts.indexOf(yes);
+        ask = 'Care dintre aceste țări are frontieră terestră cu ea?';
+        reveal = x.n + ' se învecinează cu: ' + list + '.';
+        short = x.n + ' → ' + yes.n;
+      }
+      return {
+        kicker: 'Vecinii', prompt: x.n, ask: ask,
+        options: opts.map(function (o) { return { label: o.n }; }), correct: correct,
+        reveal: reveal, short: short, fact: FACTS_C[x.n]
+      };
+    });
+  }
+
+  // ---------- Cunoaște România ----------
+  // [întrebare, răspuns corect, 3 răspunsuri greșite, explicație]
+  var ROMANIA = [
+    ['Vârful Moldoveanu, cel mai înalt din România, se află în Munții…', 'Făgăraș', 'Retezat', 'Bucegi', 'Rodna', 'Vârful Moldoveanu (2.544 m) se află în Munții Făgăraș.'],
+    ['Vârful Omu (2.505 m) se află în Munții…', 'Bucegi', 'Rodna', 'Retezat', 'Ceahlău', 'Vârful Omu este cel mai înalt vârf din Munții Bucegi.'],
+    ['Care este cel mai mare lac natural din România?', 'Razim', 'Techirghiol', 'Lacul Roșu', 'Snagov', 'Razim este cel mai mare lac din România, aflat lângă Delta Dunării.'],
+    ['Pe ce râu se află Cluj-Napoca?', 'Someșul Mic', 'Mureș', 'Olt', 'Argeș', 'Cluj-Napoca este traversat de Someșul Mic.'],
+    ['Ce râu traversează Iașul?', 'Bahlui', 'Prut', 'Siret', 'Bistrița', 'Iașul se află pe râul Bahlui.'],
+    ['Ce râu traversează Sibiul?', 'Cibin', 'Argeș', 'Siret', 'Jiu', 'Sibiul se află pe râul Cibin.'],
+    ['Ce râu sau canal traversează Timișoara?', 'Bega', 'Jiu', 'Olt', 'Argeș', 'Timișoara este traversată de canalul Bega.'],
+    ['Pe ce râu se află Oradea?', 'Crișul Repede', 'Mureș', 'Someș', 'Bega', 'Oradea se află pe Crișul Repede.'],
+    ['Pe ce râu se află Bacăul?', 'Bistrița', 'Mureș', 'Olt', 'Jiu', 'Bacăul se află pe râul Bistrița.'],
+    ['Ce râu formează granița dintre România și Republica Moldova?', 'Prutul', 'Siretul', 'Oltul', 'Mureșul', 'Prutul desparte România de Republica Moldova.'],
+    ['În ce oraș se află Castelul Peleș?', 'Sinaia', 'Bran', 'Brașov', 'Sibiu', 'Castelul Peleș se află în Sinaia, județul Prahova.'],
+    ['În ce județ se află Sighișoara?', 'Mureș', 'Brașov', 'Sibiu', 'Alba', 'Sighișoara este în județul Mureș.'],
+    ['În ce județ se află Peștera Scărișoara, cu un mare ghețar subteran?', 'Alba', 'Hunedoara', 'Cluj', 'Maramureș', 'Peștera Scărișoara se află în Munții Apuseni, în județul Alba.'],
+    ['În ce județ se află Mănăstirea Voroneț?', 'Suceava', 'Neamț', 'Iași', 'Botoșani', 'Mănăstirea Voroneț este în județul Suceava.'],
+    ['Prin ce munți trece Transfăgărășanul?', 'Făgăraș', 'Apuseni', 'Retezat', 'Bucegi', 'Transfăgărășanul traversează Munții Făgăraș.'],
+    ['Care a fost capitala Moldovei pe vremea lui Ștefan cel Mare?', 'Suceava', 'Iași', 'Vaslui', 'Piatra Neamț', 'Ștefan cel Mare a domnit de la Suceava.'],
+    ['Câte județe are România, fără municipiul București?', '41', '38', '43', '47', 'România are 41 de județe și municipiul București.'],
+    ['Care este cel mai mare județ al României ca suprafață?', 'Timiș', 'Suceava', 'Constanța', 'Caraș-Severin', 'Timișul are cea mai mare suprafață dintre județe.'],
+    ['Care este cel mai mic județ al României ca suprafață?', 'Ilfov', 'Covasna', 'Giurgiu', 'Ialomița', 'Ilfov este cel mai mic județ, cu aproximativ 1.600 km².'],
+    ['În ce parte a țării se află Bărăganul?', 'Sud-est', 'Nord-vest', 'Nord-est', 'Sud-vest', 'Bărăganul este o câmpie în sud-estul României.'],
+    ['Între ce două ape se află Dobrogea?', 'Dunăre și Marea Neagră', 'Prut și Siret', 'Olt și Jiu', 'Mureș și Tisa', 'Dobrogea se află între Dunăre și Marea Neagră.'],
+    ['În ce județ se află Cetatea Poenari, legată de Vlad Țepeș?', 'Argeș', 'Prahova', 'Dâmbovița', 'Brașov', 'Cetatea Poenari este în județul Argeș.'],
+    ['În ce județ se află Salina Turda?', 'Cluj', 'Mureș', 'Alba', 'Sălaj', 'Salina Turda se află în județul Cluj.'],
+    ['În ce județ se află Sarmizegetusa Regia, capitala dacilor?', 'Hunedoara', 'Alba', 'Caraș-Severin', 'Mureș', 'Sarmizegetusa Regia este în Munții Orăștiei, județul Hunedoara.'],
+    ['În ce parte a României se află Munții Apuseni?', 'Vest', 'Est', 'Sud-est', 'Nord-est', 'Munții Apuseni fac parte din Carpații Occidentali, în vestul țării.'],
+    ['Cu câte state se învecinează România?', '5', '4', '6', '7', 'România se învecinează cu Ucraina, Republica Moldova, Bulgaria, Serbia și Ungaria.'],
+    ['În ce județ se află masivul Ceahlău?', 'Neamț', 'Harghita', 'Suceava', 'Bacău', 'Masivul Ceahlău se află în județul Neamț.'],
+    ['În ce județ se află Peștera Urșilor?', 'Bihor', 'Alba', 'Hunedoara', 'Caraș-Severin', 'Peștera Urșilor este în județul Bihor.'],
+    ['În ce județ se află stațiunea Băile Herculane?', 'Caraș-Severin', 'Mehedinți', 'Gorj', 'Timiș', 'Băile Herculane sunt în județul Caraș-Severin.'],
+    ['Care dintre aceste județe are ieșire la Marea Neagră?', 'Constanța', 'Brăila', 'Galați', 'Ialomița', 'Județul Constanța are litoral la Marea Neagră.']
+  ];
+  function buildRomania() {
+    return shuffle(ROMANIA).slice(0, ROUNDS).map(function (q) {
+      var opts = shuffle(q.slice(1, 5));
+      return {
+        kicker: 'Cunoaște România', prompt: q[0], ask: '',
+        options: opts.map(function (o) { return { label: o }; }), correct: opts.indexOf(q[1]),
+        reveal: q[5], short: q[0].replace('…', '') + ' → ' + q[1]
+      };
+    });
+  }
+
+  // ---------- jocuri pe hartă ----------
+  var CONT_SLUG = { E: 'europa', A: 'asia', F: 'africa', N: 'america-nord', S: 'america-sud', O: 'oceania' };
+  var mapCont = CONT[store.get('hm-mapcont')] ? store.get('hm-mapcont') : 'E';
+  // 10 runde: ~7 „găsește pe hartă”, ~3 „care e marcată”; dacă sunt puține ținte, ele se repetă în alt mod.
+  function planMap(pool, keyOf) {
+    var order = shuffle(pool), items = [], first = {};
+    var picks = shuffle([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]).slice(0, 3);
+    for (var i = 0; i < ROUNDS; i++) {
+      var x = order[i % order.length], key = keyOf(x);
+      var mode = picks.indexOf(i) !== -1 ? 'pick' : 'click';
+      if (first[key]) mode = first[key] === 'click' ? 'pick' : 'click'; else first[key] = mode;
+      items.push({ x: x, mode: mode });
+    }
+    return items;
+  }
+  function buildHarta() {
+    var K = mapCont;
+    var all = COUNTRIES.filter(function (x) { return x.k === K && !x.amb; });
+    var OCEANIA_OK = ['AUS', 'NZL', 'PNG', 'FJI', 'SLB', 'VUT', 'FSM', 'PLW'];
+    var pool = all.filter(function (x) { return K === 'O' ? OCEANIA_OK.indexOf(x.cca) !== -1 : x.a >= 10000; });
+    return planMap(pool, function (x) { return x.cca; }).map(function (it) {
+      var x = it.x, map = { src: 'lume', cont: K, target: x.cca, mode: it.mode };
+      if (it.mode === 'click') {
+        return { kicker: 'Găsește pe hartă', prompt: x.n, ask: 'Atinge țara pe hartă. Poți mări cu + și −.', map: map,
+          reveal: x.n + '.', short: x.n + ' (pe hartă)', fact: FACTS_C[x.n] };
+      }
+      var opts = shuffle([x].concat(shuffle(pool.filter(function (y) { return y !== x; })).slice(0, 3)));
+      return { kicker: 'Țara marcată', prompt: 'Care este țara marcată?', ask: '', map: map,
+        options: opts.map(function (o) { return { label: o.n }; }), correct: opts.indexOf(x),
+        reveal: 'Țara marcată este ' + x.n + '.', short: 'Marcată: ' + x.n, fact: FACTS_C[x.n] };
+    });
+  }
+  function buildHartaJudete() {
+    return planMap(COUNTIES, function (x) { return x.j; }).map(function (it) {
+      var x = it.x, map = { src: 'judete', target: x.j, mode: it.mode };
+      if (it.mode === 'click') {
+        return { kicker: 'Găsește pe hartă', prompt: x.j, ask: 'Atinge județul pe hartă. Poți mări cu + și −.', map: map,
+          reveal: 'Județul ' + x.j + '.', short: x.j + ' (pe hartă)', fact: FACTS_J[x.j] };
+      }
+      var opts = shuffle([x].concat(shuffle(COUNTIES.filter(function (y) { return y !== x; })).slice(0, 3)));
+      return { kicker: 'Județul marcat', prompt: 'Care este județul marcat?', ask: '', map: map,
+        options: opts.map(function (o) { return { label: o.j }; }), correct: opts.indexOf(x),
+        reveal: 'Județul marcat este ' + x.j + '.', short: 'Marcat: ' + x.j, fact: FACTS_J[x.j] };
+    });
+  }
+
+  var NS = 'http://www.w3.org/2000/svg';
+  var MAPFILES = { lume: 'harta-lume.json', judete: 'harta-judete.json' };
+  var MAPDATA = {};
+  var M = null; // starea hărții afișate
+  var REDUCED = false;
+  try { REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+
+  function loadMap(name) {
+    if (MAPDATA[name]) return Promise.resolve(MAPDATA[name]);
+    return fetch(MAPFILES[name]).then(function (r) {
+      if (!r.ok) throw new Error('http ' + r.status);
+      return r.json();
+    }).then(function (d) { MAPDATA[name] = d; return d; });
+  }
+  function shapeName(src, key) { return src === 'lume' ? BYC[key].n : key; }
+
+  function buildMap(src) {
+    var data = MAPDATA[src], svg = $('map');
+    svg.textContent = '';
+    M = { src: src, data: data, bounds: [0, 0, data.w, data.h], paths: [], by: {}, bb: {}, vb: [0, 0, data.w, data.h], base: [0, 0, data.w, data.h], noClick: 0, anim: 0 };
+    var g = document.createElementNS(NS, 'g');
+    svg.appendChild(g); M.g = g;
+    data.shapes.forEach(function (s) {
+      var p = document.createElementNS(NS, 'path');
+      p.setAttribute('d', s.d);
+      var key = s.c || s.j || null;
+      p.__key = key;
+      g.appendChild(p); M.paths.push(p);
+      if (key) { M.by[key] = p; p.addEventListener('click', function () { onShape(key); }); }
+    });
+    var lg = document.createElementNS(NS, 'g');
+    lg.setAttribute('pointer-events', 'none');
+    svg.appendChild(lg); M.lg = lg;
+  }
+  function styleMap(r) {
+    var m = r.map;
+    M.paths.forEach(function (p) {
+      var k = p.__key, on = false;
+      if (k) {
+        if (m.src === 'lume') {
+          var x = BYC[k];
+          on = !!x && (x.k === m.cont || (x.amb && (m.cont === 'E' || m.cont === 'A')));
+        } else on = true;
+      }
+      p.setAttribute('class', on ? 'mp on' : 'mp off');
+    });
+    M.lg.textContent = '';
+    M.bb = {};
+    if (m.mode === 'pick') M.by[m.target].setAttribute('class', 'mp mark');
+    var box = $('mapbox');
+    box.classList.toggle('pick', m.mode === 'pick');
+    box.classList.remove('done');
+    $('map').setAttribute('aria-label', m.src === 'lume' ? 'Harta: ' + CONT[m.cont] : 'Harta județelor României');
+  }
+  function clampView(v) {
+    var b = M.bounds, w = Math.min(v[2], b[2]), h = Math.min(v[3], b[3]);
+    return [Math.max(b[0], Math.min(b[0] + b[2] - w, v[0])), Math.max(b[1], Math.min(b[1] + b[3] - h, v[1])), w, h];
+  }
+  function setView(v) {
+    M.vb = v;
+    var svg = $('map');
+    svg.setAttribute('viewBox', v.join(' '));
+    svg.classList.toggle('zoomed', v[2] < M.base[2] * 0.98);
+    var fs = v[2] / 36;
+    for (var t = M.lg.firstChild; t; t = t.nextSibling) { t.setAttribute('font-size', fs); t.setAttribute('stroke-width', fs / 4); }
+  }
+  function flyTo(to) {
+    if (M.anim) cancelAnimationFrame(M.anim);
+    to = clampView(to);
+    if (REDUCED) { setView(to); return; }
+    var from = M.vb.slice(), t0 = null, mm = M;
+    function step(ts) {
+      if (mm !== M) return;
+      if (t0 === null) t0 = ts;
+      var k = Math.min(1, (ts - t0) / 350); k = 1 - Math.pow(1 - k, 3);
+      setView(from.map(function (v, i) { return v + (to[i] - v) * k; }));
+      if (k < 1) M.anim = requestAnimationFrame(step);
+    }
+    M.anim = requestAnimationFrame(step);
+  }
+  function zoomBy(f, ax, ay) {
+    if (M.anim) { cancelAnimationFrame(M.anim); M.anim = 0; }
+    var v = M.vb, b = M.base;
+    if (ax === undefined) { ax = v[0] + v[2] / 2; ay = v[1] + v[3] / 2; }
+    var w = Math.max(b[2] / 14, Math.min(b[2], v[2] / f));
+    var h = w * b[3] / b[2], k = w / v[2];
+    setView(clampView([ax - (ax - v[0]) * k, ay - (ay - v[1]) * k, w, h]));
+  }
+  function toSvg(cx, cy) {
+    var svg = $('map'), m = svg.getScreenCTM();
+    if (!m) return [M.vb[0] + M.vb[2] / 2, M.vb[1] + M.vb[3] / 2];
+    var pt = svg.createSVGPoint(); pt.x = cx; pt.y = cy;
+    var q = pt.matrixTransform(m.inverse());
+    return [q.x, q.y];
+  }
+  // Pentru țări cu insule îndepărtate (Franța, SUA, Norvegia...) folosim cea mai mare bucată.
+  function mainBBox(key) {
+    if (M.bb[key]) return M.bb[key];
+    var p = M.by[key], parts = p.getAttribute('d').split(/(?=M)/), best = null;
+    if (parts.length === 1) best = p.getBBox();
+    else {
+      var tmp = document.createElementNS(NS, 'path');
+      M.g.appendChild(tmp);
+      parts.forEach(function (d) {
+        tmp.setAttribute('d', d);
+        var bb = tmp.getBBox();
+        if (!best || bb.width * bb.height > best.width * best.height) best = { x: bb.x, y: bb.y, width: bb.width, height: bb.height };
+      });
+      M.g.removeChild(tmp);
+    }
+    M.bb[key] = best;
+    return best;
+  }
+  function focusView(key) {
+    var bb = mainBBox(key), b = M.base;
+    var w = Math.min(b[2], Math.max(bb.width * 3.2, b[2] / 6)), h = w * b[3] / b[2];
+    if (bb.height * 1.6 > h) { h = bb.height * 1.6; w = Math.min(b[2], h * b[2] / b[3]); h = w * b[3] / b[2]; }
+    return clampView([bb.x + bb.width / 2 - w / 2, bb.y + bb.height / 2 - h / 2, w, h]);
+  }
+  function addLabel(key, text) {
+    var bb = mainBBox(key);
+    var t = document.createElementNS(NS, 'text');
+    t.setAttribute('class', 'mlab'); t.setAttribute('text-anchor', 'middle');
+    t.setAttribute('x', bb.x + bb.width / 2); t.setAttribute('y', bb.y + bb.height / 2);
+    t.textContent = text;
+    M.lg.appendChild(t);
+    setView(M.vb);
+  }
+  function raise(p) { p.parentNode.appendChild(p); }
+  function revealMap(r, clicked, ok) {
+    var m = r.map, t = M.by[m.target];
+    $('mapbox').classList.add('done');
+    t.setAttribute('class', 'mp right'); raise(t);
+    if (clicked && !ok) { var c = M.by[clicked]; c.setAttribute('class', 'mp wrong'); raise(c); }
+    addLabel(m.target, shapeName(m.src, m.target));
+    if (clicked && !ok) addLabel(clicked, shapeName(m.src, clicked));
+    var fv = focusView(m.target), v = M.vb;
+    var cx = fv[0] + fv[2] / 2, cy = fv[1] + fv[3] / 2;
+    var inside = cx > v[0] && cx < v[0] + v[2] && cy > v[1] && cy < v[1] + v[3];
+    if (fv[2] < v[2] * 0.95 || !inside) flyTo(fv);
+  }
+  function onShape(key) {
+    if (!S || S.answered || $('play').hidden || !M) return;
+    if (Date.now() < M.noClick) return;
+    var r = S.rounds[S.i];
+    if (!r.map || r.map.mode !== 'click') return;
+    var ok = key === r.map.target;
+    var text = ok ? shapeName(r.map.src, key) + '.'
+      : 'Ai atins ' + shapeName(r.map.src, key) + '. ' + shapeName(r.map.src, r.map.target) + ' este marcată cu verde.';
+    settle(ok, r, text);
+    revealMap(r, key, ok);
+  }
+  function setupMapInput() {
+    var svg = $('map'), ptrs = {}, drag = null, pinchD = 0;
+    function count() { return Object.keys(ptrs).length; }
+    function dist() {
+      var k = Object.keys(ptrs); if (k.length < 2) return 0;
+      return Math.hypot(ptrs[k[0]].x - ptrs[k[1]].x, ptrs[k[0]].y - ptrs[k[1]].y);
+    }
+    svg.addEventListener('pointerdown', function (e) {
+      if (!M) return;
+      ptrs[e.pointerId] = { x: e.clientX, y: e.clientY };
+      if (count() === 1) drag = { id: e.pointerId, sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY, on: false };
+      else { drag = null; pinchD = dist(); }
+    });
+    svg.addEventListener('pointermove', function (e) {
+      if (!M || !ptrs[e.pointerId]) return;
+      ptrs[e.pointerId] = { x: e.clientX, y: e.clientY };
+      if (count() >= 2) {
+        var d = dist();
+        if (pinchD && d) {
+          var k = Object.keys(ptrs);
+          var mid = toSvg((ptrs[k[0]].x + ptrs[k[1]].x) / 2, (ptrs[k[0]].y + ptrs[k[1]].y) / 2);
+          zoomBy(d / pinchD, mid[0], mid[1]);
+        }
+        pinchD = d; M.noClick = Date.now() + 300;
+        return;
+      }
+      if (!drag || drag.id !== e.pointerId) return;
+      if (!drag.on) {
+        if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 6) return;
+        if (!svg.classList.contains('zoomed') && e.pointerType === 'touch') return;
+        drag.on = true;
+        try { svg.setPointerCapture(e.pointerId); } catch (err) {}
+      }
+      var m = svg.getScreenCTM(); if (!m) return;
+      if (M.anim) { cancelAnimationFrame(M.anim); M.anim = 0; }
+      var v = M.vb;
+      setView(clampView([v[0] - (e.clientX - drag.lx) / m.a, v[1] - (e.clientY - drag.ly) / m.d, v[2], v[3]]));
+      drag.lx = e.clientX; drag.ly = e.clientY;
+      M.noClick = Date.now() + 300;
+    });
+    function up(e) {
+      delete ptrs[e.pointerId];
+      if (M && drag && drag.on) M.noClick = Date.now() + 300;
+      if (count() < 2) pinchD = 0;
+      if (count() === 0) drag = null;
+    }
+    svg.addEventListener('pointerup', up);
+    svg.addEventListener('pointercancel', up);
+    svg.addEventListener('wheel', function (e) {
+      if (!M) return;
+      e.preventDefault();
+      var p = toSvg(e.clientX, e.clientY);
+      zoomBy(Math.exp(-e.deltaY * 0.0015), p[0], p[1]);
+    }, { passive: false });
+    $('mz-in').addEventListener('click', function () { if (M) zoomBy(1.6); });
+    $('mz-out').addEventListener('click', function () { if (M) zoomBy(1 / 1.6); });
+    $('mz-reset').addEventListener('click', function () { if (M) flyTo(M.base.slice()); });
+  }
+  function prepareMapRound(r) {
+    if (!M || M.src !== r.map.src) buildMap(r.map.src);
+    styleMap(r);
+    M.base = r.map.src === 'lume' ? M.data.views[r.map.cont].slice() : [0, 0, M.data.w, M.data.h];
+    if (M.anim) { cancelAnimationFrame(M.anim); M.anim = 0; }
+    M.noClick = 0;
+    setView(M.base.slice());
+    if (r.map.mode === 'pick') {
+      var bb = mainBBox(r.map.target);
+      if (bb.width < M.base[2] / 6 && bb.height < M.base[3] / 6) setView(focusView(r.map.target));
+    }
+  }
+
   var GAMES = {
-    capitale: { name: 'Capitale', blurb: 'Țara și capitala ei, în ambele sensuri.', sample: 'Polonia → ?', build: function () { return buildCapitale(zone); } },
+    capitale: { name: 'Capitale', sub: function () { return zone === 'W' ? 'Toată lumea' : 'Europa'; }, blurb: 'Țara și capitala ei, în ambele sensuri.', sample: 'Polonia → ?', build: function () { return buildCapitale(zone); } },
     judete: { name: 'Reședințe de județ', blurb: 'Cele 40 de județe ale României și orașele lor de reședință.', sample: 'Cluj → ?', build: buildJudete },
     compara: { name: 'Mai mare, mai mic', blurb: 'Două țări. Care are suprafața sau populația mai mare?', sample: 'Suedia · Germania', build: buildCompara },
-    continente: { name: 'Continente', blurb: 'Pune fiecare țară pe continentul ei.', sample: 'Peru → ?', build: buildContinente }
+    continente: { name: 'Continente', blurb: 'Pune fiecare țară pe continentul ei.', sample: 'Peru → ?', build: buildContinente },
+    vecini: { name: 'Vecinii', blurb: 'Cine are frontieră terestră cu cine? Găsește vecinul sau intrusul.', sample: 'Elveția · Polonia?', build: buildVecini },
+    romania: { name: 'Cunoaște România', blurb: 'Munți, râuri, orașe și locuri celebre din România.', sample: 'Moldoveanu → ?', build: buildRomania },
+    harta: { name: 'Găsește pe hartă', sub: function () { return CONT[mapCont]; }, blurb: 'Atinge țara pe hartă sau recunoaște-o după formă. Alegi continentul.', sample: 'Unde este Peru?', build: buildHarta },
+    'harta-judete': { name: 'Județele pe hartă', blurb: 'Cele 40 de județe, direct pe harta României.', sample: 'Unde este Dolj?', build: buildHartaJudete }
   };
-  var GAME_IDS = ['capitale', 'judete', 'compara', 'continente'];
+  var GAME_IDS = ['capitale', 'judete', 'compara', 'continente', 'vecini', 'romania', 'harta', 'harta-judete'];
   var zone = store.get('hm-zone') === 'W' ? 'W' : 'E';
 
   // ---------- recorduri, serie, insigne ----------
-  function bestKey(id) { return 'hm-best-' + id + (id === 'capitale' ? '-' + zone : ''); }
+  function bestKey(id) { return 'hm-best-' + id + (id === 'capitale' ? '-' + zone : id === 'harta' ? '-' + mapCont : ''); }
   function getBest(id) { var v = parseInt(store.get(bestKey(id)), 10); return isNaN(v) ? null : v; }
 
   var BADGES = [
@@ -759,7 +1360,11 @@
     { id: 'p-capitale', name: '10 din 10 la Capitale', desc: 'Scor perfect la Capitale' },
     { id: 'p-judete', name: '10 din 10 la Județe', desc: 'Scor perfect la Reședințe de județ' },
     { id: 'p-compara', name: '10 din 10 la Mai mare', desc: 'Scor perfect la Mai mare, mai mic' },
-    { id: 'p-continente', name: '10 din 10 la Continente', desc: 'Scor perfect la Continente' }
+    { id: 'p-continente', name: '10 din 10 la Continente', desc: 'Scor perfect la Continente' },
+    { id: 'p-vecini', name: '10 din 10 la Vecinii', desc: 'Scor perfect la Vecinii' },
+    { id: 'p-romania', name: '10 din 10 la România', desc: 'Scor perfect la Cunoaște România' },
+    { id: 'p-harta', name: '10 din 10 pe hartă', desc: 'Scor perfect la Găsește pe hartă' },
+    { id: 'p-harta-judete', name: '10 din 10 la Județe pe hartă', desc: 'Scor perfect la Județele pe hartă' }
   ];
   function earnedBadges() { return getJSON('hm-badges', []); }
   function award(id, bag) {
@@ -800,12 +1405,16 @@
   }
 
   // ---------- clasamente (Supabase) ----------
-  function boardId(id) { return id === 'capitale' ? (zone === 'W' ? 'capitale-lume' : 'capitale-europa') : id; }
+  function boardId(id) { return id === 'capitale' ? (zone === 'W' ? 'capitale-lume' : 'capitale-europa') : id === 'harta' ? 'harta-' + CONT_SLUG[mapCont] : id; }
   function boardList() {
     return [
       ['zilnic-' + todayStr(), 'Provocarea zilei'],
       ['capitale-europa', 'Capitale · Europa'], ['capitale-lume', 'Capitale · Lume'],
-      ['judete', 'Reședințe de județ'], ['compara', 'Mai mare, mai mic'], ['continente', 'Continente']
+      ['judete', 'Reședințe de județ'], ['compara', 'Mai mare, mai mic'], ['continente', 'Continente'],
+      ['vecini', 'Vecinii'], ['romania', 'Cunoaște România'],
+      ['harta-europa', 'Hartă · Europa'], ['harta-asia', 'Hartă · Asia'], ['harta-africa', 'Hartă · Africa'],
+      ['harta-america-nord', 'Hartă · America de Nord'], ['harta-america-sud', 'Hartă · America de Sud'],
+      ['harta-oceania', 'Hartă · Oceania'], ['harta-judete', 'Hartă · Județe']
     ];
   }
   function apiHeaders(extra) {
@@ -941,6 +1550,18 @@
     });
   }
 
+  function renderMapZone() {
+    var host = $('mapzone');
+    host.textContent = '';
+    CONT_ORDER.forEach(function (k) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'tab'; b.textContent = CONT[k];
+      b.setAttribute('aria-pressed', String(k === mapCont));
+      b.addEventListener('click', function () { mapCont = k; store.set('hm-mapcont', k); renderHome(); });
+      host.appendChild(b);
+    });
+  }
+
   // ---------- ecrane și joc ----------
   var S = null;
 
@@ -980,6 +1601,7 @@
       host.appendChild(b);
     });
     renderStrip();
+    renderMapZone();
     $('show-boards').hidden = !ENABLED;
     show('home');
     showAd('home');
@@ -993,10 +1615,22 @@
     $('st-total').textContent = S.rounds.length;
     track('start', { joc: S.mode === 'daily' ? 'zilnic' : S.mode === 'repeat' ? 'repetare' : S.id });
     show('play');
-    renderRound();
+    var need = null;
+    o.rounds.forEach(function (r) { if (r.map) need = r.map.src; });
+    if (!need) { renderRound(); return; }
+    $('mapbox').hidden = true; $('opts').hidden = true; $('next').hidden = true;
+    $('kicker').textContent = ''; $('ask').hidden = true; $('fact').hidden = true; $('fb').textContent = '';
+    $('prompt').textContent = 'Se încarcă harta…';
+    loadMap(need).then(function () {
+      if (S === o) renderRound();
+    }).catch(function () {
+      if (S !== o) return;
+      $('prompt').textContent = 'Harta nu s-a putut încărca.';
+      $('ask').hidden = false; $('ask').textContent = 'Verifică conexiunea și încearcă din nou.';
+    });
   }
   function startGame(id) {
-    begin({ id: id, mode: 'normal', board: boardId(id), rounds: GAMES[id].build(), label: GAMES[id].name });
+    begin({ id: id, mode: 'normal', board: boardId(id), rounds: GAMES[id].build(), label: GAMES[id].name + (GAMES[id].sub ? ' · ' + GAMES[id].sub() : '') });
   }
   function startDaily() {
     var d = todayStr();
@@ -1019,12 +1653,16 @@
     }
     $('kicker').textContent = r.kicker;
     $('prompt').textContent = r.prompt;
+    $('prompt').classList.toggle('long', r.prompt.length > 26);
     $('ask').textContent = r.ask || '';
     $('ask').hidden = !r.ask;
+    $('mapbox').hidden = !r.map;
     var host = $('opts');
     host.textContent = '';
+    host.hidden = !r.options;
     host.className = 'opts' + (r.layout ? ' ' + r.layout : '');
-    r.options.forEach(function (o, idx) {
+    if (r.map) prepareMapRound(r);
+    (r.options || []).forEach(function (o, idx) {
       var b = document.createElement('button');
       b.type = 'button'; b.className = 'opt';
       var kb = document.createElement('kbd'); kb.textContent = idx + 1;
@@ -1040,25 +1678,14 @@
     $('next').hidden = true;
   }
 
-  function choose(idx) {
-    if (!S || S.answered || $('play').hidden) return;
+  function settle(ok, r, text) {
     S.answered = true;
-    var r = S.rounds[S.i];
-    var ok = idx === r.correct;
     S.results[S.i] = ok;
     if (ok) { S.score++; S.streak++; } else { S.streak = 0; S.wrong.push(r); }
     sfx(ok ? 'ok' : 'no');
-    var btns = $('opts').children;
-    for (var k = 0; k < btns.length; k++) {
-      btns[k].disabled = true;
-      if (k === r.correct) btns[k].classList.add('right');
-      else if (k === idx) btns[k].classList.add('wrong');
-      else btns[k].classList.add('dim');
-      var d = btns[k].querySelector('.detail'); if (d) d.hidden = false;
-    }
     var fb = $('fb');
     fb.className = 'fb-text ' + (ok ? 'good' : 'bad');
-    fb.textContent = (ok ? '✓ Corect. ' : '✗ Greșit. ') + r.reveal;
+    fb.textContent = (ok ? '✓ Corect. ' : '✗ Greșit. ') + text;
     if (r.fact) { $('fact').textContent = 'Știai că? ' + r.fact; $('fact').hidden = false; }
     $('st-score').textContent = S.score;
     $('st-streak').textContent = S.streak;
@@ -1067,6 +1694,23 @@
     nx.textContent = S.i === S.rounds.length - 1 ? 'Vezi rezultatul' : 'Următoarea';
     nx.hidden = false;
     nx.focus();
+  }
+
+  function choose(idx) {
+    if (!S || S.answered || $('play').hidden) return;
+    var r = S.rounds[S.i];
+    if (!r.options || idx >= r.options.length) return;
+    var ok = idx === r.correct;
+    var btns = $('opts').children;
+    for (var k = 0; k < btns.length; k++) {
+      btns[k].disabled = true;
+      if (k === r.correct) btns[k].classList.add('right');
+      else if (k === idx) btns[k].classList.add('wrong');
+      else btns[k].classList.add('dim');
+      var d = btns[k].querySelector('.detail'); if (d) d.hidden = false;
+    }
+    settle(ok, r, r.reveal);
+    if (r.map && M) revealMap(r, null, ok);
   }
 
   function next() {
@@ -1106,7 +1750,7 @@
       if (score === total) award('fix', bag);
     }
 
-    $('end-game').textContent = S.label + (S.mode === 'normal' && S.id === 'capitale' ? ' · ' + (zone === 'W' ? 'Toată lumea' : 'Europa') : '');
+    $('end-game').textContent = S.label;
     $('end-score').textContent = score;
     $('end-total').textContent = total;
     $('end-msg').textContent = score === total ? 'Perfect. Harta nu mai are secrete pentru tine.'
@@ -1159,6 +1803,7 @@
     });
   });
 
+  setupMapInput();
   renderSound();
   renderHome();
 })();
